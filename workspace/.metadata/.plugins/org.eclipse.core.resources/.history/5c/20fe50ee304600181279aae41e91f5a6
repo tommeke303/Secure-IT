@@ -1,0 +1,10 @@
+package be.msec.government;
+
+public class TimestampService {
+
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+
+	}
+
+}
