@@ -1,0 +1,38 @@
+package be.msec.government;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+
+public class TimestampTest {
+
+	public static void main(String[] args) throws IOException {
+		String governmentAddress = "localhost";
+		int governmentPort = 443;
+		
+		SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+		SSLSocket socket = (SSLSocket) factory.createSocket(governmentAddress, governmentPort);
+
+		PrintWriter out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
+		out.println("GET " + governmentAddress + " HTTP/1.1");
+		out.println();
+		out.flush();
+
+		BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+		String line;
+
+		while ((line = in.readLine()) != null) {
+			System.out.println(line);
+		}
+
+		out.close();
+		in.close();
+	}
+
+}

@@ -1,16 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <qualifiedTypeNameHistroy>
-<fullyQualifiedTypeName name="javax.net.ssl.SSLSocketFactory"/>
-<fullyQualifiedTypeName name="javax.net.ssl.SSLSocket"/>
-<fullyQualifiedTypeName name="java.io.PrintWriter"/>
 <fullyQualifiedTypeName name="java.io.BufferedWriter"/>
-<fullyQualifiedTypeName name="java.io.OutputStreamWriter"/>
-<fullyQualifiedTypeName name="java.io.BufferedReader"/>
-<fullyQualifiedTypeName name="java.io.InputStreamReader"/>
 <fullyQualifiedTypeName name="javax.net.ssl.SSLServerSocketFactory"/>
 <fullyQualifiedTypeName name="javax.net.ssl.SSLServerSocket"/>
 <fullyQualifiedTypeName name="java.net.Socket"/>
-<fullyQualifiedTypeName name="java.io.InputStream"/>
 <fullyQualifiedTypeName name="java.io.OutputStream"/>
 <fullyQualifiedTypeName name="java.security.KeyStore"/>
 <fullyQualifiedTypeName name="java.io.FileInputStream"/>
@@ -20,4 +13,17 @@
 <fullyQualifiedTypeName name="java.security.Timestamp"/>
 <fullyQualifiedTypeName name="java.security.PublicKey"/>
 <fullyQualifiedTypeName name="java.sql.Timestamp"/>
+<fullyQualifiedTypeName name="javax.net.ssl.SSLSocketFactory"/>
+<fullyQualifiedTypeName name="javax.net.ssl.SSLSocket"/>
+<fullyQualifiedTypeName name="java.io.PrintWriter"/>
+<fullyQualifiedTypeName name="java.io.OutputStreamWriter"/>
+<fullyQualifiedTypeName name="java.io.BufferedReader"/>
+<fullyQualifiedTypeName name="java.io.InputStreamReader"/>
+<fullyQualifiedTypeName name="java.security.Security"/>
+<fullyQualifiedTypeName name="java.security.Provider"/>
+<fullyQualifiedTypeName name="javax.xml.ws.spi.Provider"/>
+<fullyQualifiedTypeName name="java.io.InputStream"/>
+<fullyQualifiedTypeName name="java.io.DataInputStream"/>
+<fullyQualifiedTypeName name="java.io.BufferedInputStream"/>
+<fullyQualifiedTypeName name="java.util.Arrays"/>
 </qualifiedTypeNameHistroy>
