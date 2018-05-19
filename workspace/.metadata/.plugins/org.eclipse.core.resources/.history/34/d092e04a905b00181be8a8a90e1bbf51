@@ -1,0 +1,41 @@
+package be.msec.government;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.nio.file.Paths;
+import java.security.KeyStore;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.Security;
+import java.security.cert.CertificateException;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Arrays;
+
+import javax.crypto.Cipher;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+
+import com.sun.net.ssl.internal.ssl.Provider;
+
+import be.msec.government.client.TimestampClient;
+
+public class TimestampClientTest {
+
+	public static void main(String[] args) throws Exception {
+		Timestamp theTime = new TimestampClient().getTimestampDecrypted();
+
+		System.out.println("Timestamp gotten from government:");
+		System.out.println(theTime);
+	}
+
+}

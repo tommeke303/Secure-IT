@@ -8,6 +8,8 @@
 		<item value="true" key="wrap"/>
 		<item value="false" key="wholeword"/>
 		<list key="findhistory">
+			<item value="chall"/>
+			<item value="rsa"/>
 			<item value="handshake"/>
 			<item value="apd"/>
 			<item value="JC_HOME"/>

@@ -12,7 +12,6 @@
 <fullyQualifiedTypeName name="java.io.File"/>
 <fullyQualifiedTypeName name="java.security.Timestamp"/>
 <fullyQualifiedTypeName name="java.security.PublicKey"/>
-<fullyQualifiedTypeName name="java.sql.Timestamp"/>
 <fullyQualifiedTypeName name="javax.net.ssl.SSLSocketFactory"/>
 <fullyQualifiedTypeName name="javax.net.ssl.SSLSocket"/>
 <fullyQualifiedTypeName name="java.io.PrintWriter"/>
@@ -22,8 +21,26 @@
 <fullyQualifiedTypeName name="java.security.Security"/>
 <fullyQualifiedTypeName name="java.security.Provider"/>
 <fullyQualifiedTypeName name="javax.xml.ws.spi.Provider"/>
-<fullyQualifiedTypeName name="java.io.InputStream"/>
 <fullyQualifiedTypeName name="java.io.DataInputStream"/>
 <fullyQualifiedTypeName name="java.io.BufferedInputStream"/>
+<fullyQualifiedTypeName name="java.lang.Long"/>
+<fullyQualifiedTypeName name="java.sql.Timestamp"/>
+<fullyQualifiedTypeName name="javacard.security.KeyBuilder"/>
+<fullyQualifiedTypeName name="javacard.security.RSAPrivateKey"/>
+<fullyQualifiedTypeName name="java.security.interfaces.RSAPrivateKey"/>
+<fullyQualifiedTypeName name="javacard.security.Signature"/>
+<fullyQualifiedTypeName name="java.nio.file.Files"/>
+<fullyQualifiedTypeName name="java.util.Map"/>
 <fullyQualifiedTypeName name="java.util.Arrays"/>
+<fullyQualifiedTypeName name="java.util.ArrayList"/>
+<fullyQualifiedTypeName name="java.lang.System"/>
+<fullyQualifiedTypeName name="java.security.Signature"/>
+<fullyQualifiedTypeName name="java.security.SecureRandom"/>
+<fullyQualifiedTypeName name="java.io.InputStream"/>
+<fullyQualifiedTypeName name="java.io.ByteArrayInputStream"/>
+<fullyQualifiedTypeName name="java.security.cert.X509Certificate"/>
+<fullyQualifiedTypeName name="java.security.KeyPair"/>
+<fullyQualifiedTypeName name="java.lang.Exception"/>
+<fullyQualifiedTypeName name="be.msec.government.TimestampClient"/>
+<fullyQualifiedTypeName name="be.msec.government.client.GVMTimestampClient"/>
 </qualifiedTypeNameHistroy>

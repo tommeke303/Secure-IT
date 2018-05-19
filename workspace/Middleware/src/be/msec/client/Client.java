@@ -3,6 +3,10 @@ package be.msec.client;
 import be.msec.client.connection.Connection;
 import be.msec.client.connection.IConnection;
 import be.msec.client.connection.SimulatedConnection;
+import be.msec.government.client.GVMTimestampClient;
+
+import java.security.SecureRandom;
+import java.sql.Timestamp;
 
 import javax.smartcardio.*;
 
@@ -18,6 +22,13 @@ public class Client {
 	public static void main(String[] args) throws Exception {
 		IConnection c;
 		boolean simulation = true;		// Choose simulation vs real card here
+		
+		/*
+		// random byte?
+		SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
+		byte[] bytes = new byte [20];
+		random.nextBytes(bytes) ;
+		*/
 
 		if (simulation) {
 			//Simulation:
@@ -68,14 +79,31 @@ public class Client {
 			else if(r.getSW()!=0x9000) throw new Exception("Exception on the card: " + r.getSW());
 			System.out.println("PIN Verified");
 			
+			/**
+			 --------------------------------------end original code-------------------------------------------------------------------
+			 */
+			
+			/**
+			 * STEP 1: update time, todo on javacard: (3), (9)->(12)
+			 */
+			// todo: (2): send "hello" + current time to card
+			Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+			
+			// todo: (4): receive 'reqValidation' from card
+			// tijdelijke responce
+			Boolean reqRevalidation = true;
+			
+			// (5), set new time when revalidation is required
+			if(reqRevalidation){
+				// (6)->(9)
+				byte[] encryptedTimestamp = new GVMTimestampClient().getTimestampRaw();
+			}
+				
 		} catch (Exception e) {
 			throw e;
 		}
 		finally {
 			c.close();  // close the connection with the card
 		}
-
-
 	}
-
 }

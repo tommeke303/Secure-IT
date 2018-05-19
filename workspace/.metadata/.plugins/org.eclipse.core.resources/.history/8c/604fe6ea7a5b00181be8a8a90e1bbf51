@@ -1,0 +1,5 @@
+package be.msec.government;
+
+public enum Requests {
+
+}
