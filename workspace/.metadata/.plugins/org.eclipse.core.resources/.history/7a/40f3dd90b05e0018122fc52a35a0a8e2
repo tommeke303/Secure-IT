@@ -1,0 +1,19 @@
+package be.msec.serviceProvider.client;
+
+import java.io.File;
+import java.nio.file.Paths;
+
+public class SPClient {
+	// network address
+	private String Address = "localhost";
+	private int Port = 444;
+
+	// find keystore
+	private String keyStorePath = Paths.get(System.getProperty("user.dir")).getParent().toString() + File.separator
+			+ "Certificates" + File.separator;
+	private String ClientKeyStore = keyStorePath + "common.jks";
+	private String ClientKeyPassword = "password";
+	private String CertificateName = "serviceprovider (ca)";
+	
+	
+}

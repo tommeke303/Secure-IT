@@ -4,7 +4,10 @@ import be.msec.client.connection.Connection;
 import be.msec.client.connection.IConnection;
 import be.msec.client.connection.SimulatedConnection;
 import be.msec.government.client.GVMTimestampClient;
+import be.msec.serviceProvider.client.SPClient;
 
+import java.io.File;
+import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.sql.Timestamp;
 
@@ -16,6 +19,7 @@ public class Client {
 	private static final byte VALIDATE_PIN_INS = 0x22;
 	private final static short SW_VERIFICATION_FAILED = 0x6300;
 	private final static short SW_PIN_VERIFICATION_REQUIRED = 0x6301;
+	
 	/**
 	 * @param args
 	 */
@@ -84,12 +88,12 @@ public class Client {
 			 */
 			
 			/**
-			 * STEP 1: update time, todo on javacard: (3), (9)->(12)
+			 * STEP 1: update time, TODO on javacard: (3)
 			 */
-			// todo: (2): send "hello" + current time to card
+			// TODO: (2): send "hello" + current time to card
 			Timestamp timestamp = new Timestamp(System.currentTimeMillis());
 			
-			// todo: (4): receive 'reqValidation' from card
+			// TODO: (4): receive 'reqValidation' from card
 			// tijdelijke responce
 			Boolean reqRevalidation = true;
 			
@@ -97,7 +101,14 @@ public class Client {
 			if(reqRevalidation){
 				// (6)->(9)
 				byte[] encryptedTimestamp = new GVMTimestampClient().getTimestampRaw();
+				
+				// TODO: (9)->(12)
 			}
+			
+			/**
+			 * STEP 2: authenticate Service Provider
+			 */
+			SPClient service = new SPClient();
 				
 		} catch (Exception e) {
 			throw e;

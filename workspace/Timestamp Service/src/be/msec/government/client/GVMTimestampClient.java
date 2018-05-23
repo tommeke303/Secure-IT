@@ -21,14 +21,16 @@ import javax.net.ssl.SSLSocketFactory;
 import com.sun.net.ssl.internal.ssl.Provider;
 
 public class GVMTimestampClient {
-	private String governmentAddress = "localhost";
-	private int governmentPort = 443;
+	// network address
+	private String Address = "localhost";
+	private int Port = 443;
 
 	// find keystore
 	private String keyStorePath = Paths.get(System.getProperty("user.dir")).getParent().toString() + File.separator
 			+ "Certificates" + File.separator;
-	private String ClientKeyStore = keyStorePath + "client.jks";
+	private String ClientKeyStore = keyStorePath + "common.jks";
 	private String ClientKeyPassword = "password";
+	private String CertificateName = "government (ca)";
 	
 	/**
 	 * Ask the government for a timestamp and have it already decrypted.
@@ -46,8 +48,16 @@ public class GVMTimestampClient {
 		fis.close();
 
 		PrivateKey pr = (PrivateKey) keyStore.getKey("government", ClientKeyPassword.toCharArray());
-		PublicKey pk = keyStore.getCertificate("government").getPublicKey();
-
+		PublicKey pk = keyStore.getCertificate(CertificateName).getPublicKey();
+		
+		/*
+		X509Certificate a = (X509Certificate) keyStore.getCertificate(CertificateName);
+		System.out.println("domain: " + a.getSubjectDN());
+		*/
+		
+		// verify
+		keyStore.getCertificate(CertificateName).verify(keyStore.getCertificate("ca").getPublicKey());
+		
 		String alg = "RSA/ECB/PKCS1Padding";
 		Cipher c;
 
@@ -77,11 +87,10 @@ public class GVMTimestampClient {
 		// System.setProperty("javax.net.debug", "all");
 
 		SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-		SSLSocket socket = (SSLSocket) factory.createSocket(governmentAddress, governmentPort);
+		SSLSocket socket = (SSLSocket) factory.createSocket(Address, Port);
 
 		DataInputStream in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
-		OutputStream out = socket.getOutputStream();
-
+		
 		// get data
 		ArrayList<Byte> inputList = new ArrayList<Byte>();
 		int count;
@@ -103,28 +112,5 @@ public class GVMTimestampClient {
 		in.close();
 		
 		return Result;
-/*
-		// get certificate
-		KeyStore keyStore = KeyStore.getInstance("JKS");
-		FileInputStream fis = new FileInputStream(ClientKeyStore);
-		keyStore.load(fis, ClientKeyPassword.toCharArray());
-		fis.close();
-
-		PrivateKey pr = (PrivateKey) keyStore.getKey("government", ClientKeyPassword.toCharArray());
-		PublicKey pk = keyStore.getCertificate("government").getPublicKey();
-
-		String alg = "RSA/ECB/PKCS1Padding";
-		Cipher c;
-
-		// decrypt
-		c = Cipher.getInstance(alg);
-		c.init(Cipher.DECRYPT_MODE, pk);
-		byte[] decrypted = c.doFinal(Result);
-		String asString = new String(decrypted);
-		Timestamp theTime = new Timestamp(new Long(asString));
-
-		System.out.println("Timestamp gotten from government:");
-		System.out.println(theTime);
-		return decrypted;*/
 	}
 }

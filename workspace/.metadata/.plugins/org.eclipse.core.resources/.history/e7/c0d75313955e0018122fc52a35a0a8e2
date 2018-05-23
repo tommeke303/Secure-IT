@@ -1,0 +1,138 @@
+package be.msec.government.client;
+
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.OutputStream;
+import java.nio.file.Paths;
+import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.Security;
+import java.security.cert.X509Certificate;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Arrays;
+
+import javax.crypto.Cipher;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+
+import com.sun.net.ssl.internal.ssl.Provider;
+
+public class GVMTimestampClient {
+	private String governmentAddress = "localhost";
+	private int governmentPort = 443;
+
+	// find keystore
+	private String keyStorePath = Paths.get(System.getProperty("user.dir")).getParent().toString() + File.separator
+			+ "Certificates" + File.separator;
+	private String ClientKeyStore = keyStorePath + "common.jks";
+	private String ClientKeyPassword = "password";
+	private String CertificateName = "government (ca)";
+	
+	/**
+	 * Ask the government for a timestamp and have it already decrypted.
+	 * 
+	 * @return The timestamp from the government, already decrypted for you.
+	 * @throws Exception If something went wrong.
+	 */
+	public Timestamp getTimestampDecrypted() throws Exception {
+		byte[] Raw = getTimestampRaw();
+
+		// get certificate
+		KeyStore keyStore = KeyStore.getInstance("JKS");
+		FileInputStream fis = new FileInputStream(ClientKeyStore);
+		keyStore.load(fis, ClientKeyPassword.toCharArray());
+		fis.close();
+
+		PrivateKey pr = (PrivateKey) keyStore.getKey("government", ClientKeyPassword.toCharArray());
+		PublicKey pk = keyStore.getCertificate(CertificateName).getPublicKey();
+		
+		X509Certificate a = (X509Certificate) keyStore.getCertificate(CertificateName);
+		System.out.println("domain: " + a.getSubjectDN());
+		
+		// verify
+		keyStore.getCertificate(CertificateName).verify(keyStore.getCertificate("ca").getPublicKey());
+		
+		String alg = "RSA/ECB/PKCS1Padding";
+		Cipher c;
+
+		// decrypt
+		c = Cipher.getInstance(alg);
+		c.init(Cipher.DECRYPT_MODE, pk);
+		byte[] decrypted = c.doFinal(Raw);
+		String asString = new String(decrypted);
+		Timestamp theTime = new Timestamp(new Long(asString));
+
+		return theTime;
+	}
+
+	/**
+	 * Ask the government for a timestamp.
+	 * 
+	 * @return The timestamp from the government, encrypted with the private key of the government
+	 * @throws Exception If something went wrong.
+	 */
+	public byte[] getTimestampRaw() throws Exception {
+		// set security properties
+		Security.addProvider(new Provider());
+		System.setProperty("javax.net.ssl.trustStore", ClientKeyStore);
+		System.setProperty("javax.net.ssl.trustStorePassword", ClientKeyPassword);
+
+		// optional: show details about handshake
+		// System.setProperty("javax.net.debug", "all");
+
+		SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+		SSLSocket socket = (SSLSocket) factory.createSocket(governmentAddress, governmentPort);
+
+		DataInputStream in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+		OutputStream out = socket.getOutputStream();
+
+		// get data
+		ArrayList<Byte> inputList = new ArrayList<Byte>();
+		int count;
+		byte[] Buffer = new byte[32];
+		while ((count = in.read(Buffer)) > 0) {
+			byte[] found = Arrays.copyOfRange(Buffer, 0, count);
+			for (byte b : found) {
+				inputList.add(b);
+			}
+		}
+
+		// convert from Byte[] to byte[]
+		byte[] Result = new byte[inputList.size()];
+		for (int i = 0; i < inputList.size(); i++) {
+			Result[i] = inputList.get(i);
+		}
+
+		// close connections
+		in.close();
+		
+		return Result;
+/*
+		// get certificate
+		KeyStore keyStore = KeyStore.getInstance("JKS");
+		FileInputStream fis = new FileInputStream(ClientKeyStore);
+		keyStore.load(fis, ClientKeyPassword.toCharArray());
+		fis.close();
+
+		PrivateKey pr = (PrivateKey) keyStore.getKey("government", ClientKeyPassword.toCharArray());
+		PublicKey pk = keyStore.getCertificate("government").getPublicKey();
+
+		String alg = "RSA/ECB/PKCS1Padding";
+		Cipher c;
+
+		// decrypt
+		c = Cipher.getInstance(alg);
+		c.init(Cipher.DECRYPT_MODE, pk);
+		byte[] decrypted = c.doFinal(Result);
+		String asString = new String(decrypted);
+		Timestamp theTime = new Timestamp(new Long(asString));
+
+		System.out.println("Timestamp gotten from government:");
+		System.out.println(theTime);
+		return decrypted;*/
+	}
+}

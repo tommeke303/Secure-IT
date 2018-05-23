@@ -1,0 +1,175 @@
+package be.msec.serviceProvider;
+
+import java.awt.EventQueue;
+
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+
+import javax.swing.JTabbedPane;
+import javax.swing.JPanel;
+import javax.swing.BoxLayout;
+import javax.swing.GroupLayout.Alignment;
+
+import java.awt.FlowLayout;
+import javax.swing.SwingConstants;
+import javax.swing.JDesktopPane;
+import javax.swing.JButton;
+import javax.swing.AbstractAction;
+import java.awt.event.ActionEvent;
+import javax.swing.Action;
+import java.awt.event.ActionListener;
+import java.awt.Window.Type;
+import javax.swing.JList;
+import javax.swing.AbstractListModel;
+import javax.swing.border.BevelBorder;
+import javax.swing.JSpinner;
+import javax.swing.ListSelectionModel;
+import javax.swing.JScrollPane;
+import java.awt.Component;
+import java.awt.Cursor;
+
+public class Main {
+
+	private JFrame frmFrame;
+	private JPanel tabWaiting;
+	private JPanel tabDefault;
+	private JPanel tabEGov;
+	private JPanel tabBank;
+	private JPanel tabExtra;
+	private JTabbedPane tabbedPane;
+	private JScrollPane spEGov;
+	private JList list;
+	private JButton btnSelectEGov;
+
+	String[] valuesEGov = new String[] {"Tax", "Health"};
+	
+	/**
+	 * Launch the application.
+	 */
+	public static void main(String[] args) {
+		EventQueue.invokeLater(new Runnable() {
+			public void run() {
+				try {
+					Main window = new Main();
+					window.frmFrame.setVisible(true);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
+	}
+
+	/**
+	 * Create the application.
+	 */
+	public Main() {
+		initialize();
+	}
+
+	/**
+	 * Initialize the contents of the frame.
+	 */
+
+	private void initialize() {
+		frmFrame = new JFrame();
+		frmFrame.setBounds(100, 100, 360, 204);
+		frmFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frmFrame.setMinimumSize(new Dimension(300, 200));
+		frmFrame.getContentPane().setLayout(new BorderLayout(0, 0));
+
+		tabbedPane = new JTabbedPane(JTabbedPane.LEFT);
+		tabbedPane.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+		frmFrame.getContentPane().add(tabbedPane);
+
+		getTabbedPane();
+		// getWaitingPanel();
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes", "serial" })
+	private void getTabbedPane() {
+		frmFrame.setTitle("Select a service");
+
+		if (tabWaiting != null)
+			tabbedPane.removeTabAt(tabbedPane.indexOfComponent(tabWaiting));
+
+		tabEGov = new JPanel();
+		tabbedPane.addTab("eGov", null, tabEGov, null);
+		tabEGov.setLayout(new BorderLayout(0, 0));
+		
+		spEGov = new JScrollPane();
+		spEGov.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+		tabEGov.add(spEGov, BorderLayout.CENTER);
+		
+		list = new JList();
+		list.setModel(new AbstractListModel() {
+			
+			public int getSize() {
+				return valuesEGov.length;
+			}
+			public Object getElementAt(int index) {
+				return valuesEGov[index];
+			}
+		});
+		spEGov.setViewportView(list);
+		
+		btnSelectEGov = new JButton("Select");
+		btnSelectEGov.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		btnSelectEGov.setAlignmentY(Component.BOTTOM_ALIGNMENT);
+		btnSelectEGov.setAlignmentX(Component.CENTER_ALIGNMENT);
+		tabEGov.add(btnSelectEGov, BorderLayout.SOUTH);
+
+		tabBank = new JPanel();
+		tabbedPane.addTab("Bank", null, tabBank, null);
+
+		tabExtra = new JPanel();
+		tabbedPane.addTab("Extra", null, tabExtra, null);
+		
+				JButton btnNewButton = new JButton("set waiting");
+				tabExtra.add(btnNewButton);
+				btnNewButton.addActionListener(new ActionListener() {
+					public void actionPerformed(ActionEvent arg0) {
+						getWaitingPanel();
+					}
+				});
+
+		tabDefault = new JPanel();
+		tabDefault.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+		tabbedPane.addTab("Default", null, tabDefault, null);
+	}
+
+	private void getWaitingPanel() {
+		new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				try {
+					Thread.sleep(3000);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				getTabbedPane();
+			}
+		}).start();
+
+		frmFrame.setTitle("Waiting");
+
+		tabWaiting = new JPanel();
+		tabbedPane.addTab("Waiting", null, tabWaiting, null);
+
+		JLabel lblWaiting = new JLabel("Please insert card...");
+		tabWaiting.add(lblWaiting);
+		lblWaiting.setVerticalAlignment(SwingConstants.TOP);
+		lblWaiting.setHorizontalTextPosition(SwingConstants.CENTER);
+		lblWaiting.setHorizontalAlignment(SwingConstants.CENTER);
+
+		if (tabEGov != null) {
+			tabbedPane.removeTabAt(tabbedPane.indexOfComponent(tabBank));
+			tabbedPane.removeTabAt(tabbedPane.indexOfComponent(tabDefault));
+			tabbedPane.removeTabAt(tabbedPane.indexOfComponent(tabEGov));
+			tabbedPane.removeTabAt(tabbedPane.indexOfComponent(tabExtra));
+		}
+	}
+}

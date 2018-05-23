@@ -4,5 +4,6 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="libs/apduio.jar"/>
 	<classpathentry kind="lib" path="libs/GVMTimestampClient.jar"/>
+	<classpathentry kind="lib" path="libs/SPClient.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

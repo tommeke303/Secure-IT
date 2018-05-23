@@ -1,0 +1,37 @@
+package be.msec.serviceProvider.client;
+
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.Socket;
+import java.net.UnknownHostException;
+import java.nio.file.Paths;
+
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+
+public class SPClient {
+	// network address
+	private String Address = "localhost";
+	private int Port = 444;
+
+	// find keystore
+	private String keyStorePath = Paths.get(System.getProperty("user.dir")).getParent().toString() + File.separator
+			+ "Certificates" + File.separator;
+	private String ClientKeyStore = keyStorePath + "common.jks";
+	private String ClientKeyPassword = "password";
+	private String CertificateName = "serviceprovider (ca)";
+	private OutputStream out;
+	private DataInputStream in;
+	
+	public SPClient() throws Exception {
+		// initialize connection
+		SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+		SSLSocket socket = (SSLSocket) factory.createSocket(Address, Port);
+		out = socket.getOutputStream();
+		in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+		System.out.println("\nNew connection accepted");
+	}
+}
