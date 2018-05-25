@@ -80,10 +80,10 @@ public class SPMain {
 	private JPanel tabExtra;
 	private JTabbedPane tabbedPane;
 
-	private String[] valuesEGov = new String[] { "Tax", "Health" };
+	private String[] valuesEGov = new String[] { "MyPension", "Tax-On-Web",  };
 	private String[] valuesBank = new String[] { "ING", "KBC" };
-	private String[] valuesExtra = new String[] { "Extra1", "Extra2" };
-	private String[] valuesDefault = new String[] { "Snack machine", "Game shop" };
+	private String[] valuesExtra = new String[] { "Eye-Institute-Aalst", "Wellness-Kliniek-Genk" };
+	private String[] valuesDefault = new String[] { "GameCenter", "VendingMachine" };
 
 	private JList lstEGov;
 	private JList lstDefault;
@@ -155,6 +155,8 @@ public class SPMain {
 							case CLOSE:
 								in.close();
 								out.close();
+
+								isWaitingForNewConnection = true;
 								break;
 
 							default:
@@ -162,9 +164,6 @@ public class SPMain {
 								break;
 							}
 						}
-						
-						// show waiting again
-						getWaitingPanel();
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -179,12 +178,12 @@ public class SPMain {
 
 	private void initialize() {
 		frmFrame = new JFrame();
-		frmFrame.setBounds(100, 100, 360, 204);
+		frmFrame.setBounds(100, 100, 311, 185);
 		frmFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frmFrame.setMinimumSize(new Dimension(300, 200));
+		frmFrame.setMinimumSize(new Dimension(300, 250));
 		frmFrame.getContentPane().setLayout(new BorderLayout(0, 0));
 
-		tabbedPane = new JTabbedPane(JTabbedPane.LEFT);
+		tabbedPane = new JTabbedPane(JTabbedPane.TOP);
 		tabbedPane.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
 		frmFrame.getContentPane().add(tabbedPane);
 
@@ -266,7 +265,7 @@ public class SPMain {
 		tabBank.add(btnBank, BorderLayout.SOUTH);
 
 		tabExtra = new JPanel();
-		tabbedPane.addTab("Extra", null, tabExtra, null);
+		tabbedPane.addTab("Clinic", null, tabExtra, null);
 		tabExtra.setLayout(new BorderLayout(0, 0));
 
 		JScrollPane spExtra = new JScrollPane();
@@ -344,8 +343,6 @@ public class SPMain {
 		lblWaiting.setVerticalAlignment(SwingConstants.TOP);
 		lblWaiting.setHorizontalTextPosition(SwingConstants.CENTER);
 		lblWaiting.setHorizontalAlignment(SwingConstants.CENTER);
-
-		isWaitingForNewConnection = true;
 	}
 
 	private void selectService(String serviceName) {
@@ -370,7 +367,10 @@ public class SPMain {
 			
 			// send certificate
 			out.writeObject(new SPmessage(SPmessageType.SP_CERTIFICATE, cert));
-			System.out.println("Certificate send");
+			System.out.println("Certificate sent");
+
+			// show waiting again
+			getWaitingPanel();
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
