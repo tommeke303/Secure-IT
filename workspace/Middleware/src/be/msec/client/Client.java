@@ -9,6 +9,7 @@ import be.msec.serviceProvider.client.SPClient;
 import java.io.File;
 import java.nio.file.Paths;
 import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.sql.Timestamp;
 
 import javax.smartcardio.*;
@@ -109,6 +110,23 @@ public class Client {
 			 * STEP 2: authenticate Service Provider
 			 */
 			SPClient service = new SPClient();
+
+			X509Certificate cert = service.getServiceCertificate();
+			// TODO send this certificate to the javacard
+			
+			/**
+			 * TODO stuff to do on javacard
+			  
+			  // verify certificate
+			  cert.verify(*CA pk*);
+			 */
+
+			
+			
+			// just to keep client running
+			while (true) {
+				
+			}
 				
 		} catch (Exception e) {
 			throw e;

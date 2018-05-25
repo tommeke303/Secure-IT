@@ -1,0 +1,12 @@
+package be.msec.serviceProvider;
+
+import java.io.Serializable;
+
+public class ServiceProviderMessage implements Serializable {
+	private static final long serialVersionUID = -2714228963872918578L;
+
+	public enum messageType{
+		
+	}
+}
+

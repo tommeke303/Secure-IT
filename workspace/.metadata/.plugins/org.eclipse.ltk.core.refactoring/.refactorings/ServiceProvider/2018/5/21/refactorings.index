@@ -7,3 +7,7 @@
 1527097025332	Rename field 'isWaiting'
 1527100730990	Rename type 'Main'
 1527111886658	Rename field 'REQservice'
+1527249631328	Delete element
+1527255660006	Rename type 'ServiceProviderMessage'
+1527260681404	Rename type 'ServiceProvider'
+1527261148214	Rename type 'Main'

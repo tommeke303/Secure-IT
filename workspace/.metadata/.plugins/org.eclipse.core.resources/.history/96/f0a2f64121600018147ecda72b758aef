@@ -1,0 +1,41 @@
+package be.msec.serviceProvider;
+
+import java.io.Serializable;
+
+/**
+ * simple sendable message that can contain any data, and uses an enum as type identifier
+ * @author Pedro
+ *
+ */
+public class ServiceProviderMessage implements Serializable {
+	private static final long serialVersionUID = -2714228963872918578L;
+	private messageType msgType;
+	private Object data;
+
+	public ServiceProviderMessage(messageType msgType, Object data) {
+		this.msgType = msgType;
+		this.data = data;
+	}
+	public ServiceProviderMessage(messageType msgType) {
+		this(msgType, null);
+	}
+	
+	public messageType getMessageType(){
+		return this.msgType;
+	}
+	
+	public Object getData(){
+		return this.data;
+	}
+	
+	/**
+	 * Close = This connection will be closed
+	 * 
+	 * @author Pedro
+	 *
+	 */
+	public enum messageType{
+		Close
+	}
+}
+

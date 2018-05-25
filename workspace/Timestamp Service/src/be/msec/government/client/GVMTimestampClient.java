@@ -1,10 +1,14 @@
 package be.msec.government.client;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.nio.file.Paths;
 import java.security.KeyStore;
 import java.security.PrivateKey;
@@ -23,7 +27,7 @@ import com.sun.net.ssl.internal.ssl.Provider;
 public class GVMTimestampClient {
 	// network address
 	private String Address = "localhost";
-	private int Port = 443;
+	private int Port = 1250;
 
 	// find keystore
 	private String keyStorePath = Paths.get(System.getProperty("user.dir")).getParent().toString() + File.separator
@@ -89,28 +93,13 @@ public class GVMTimestampClient {
 		SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
 		SSLSocket socket = (SSLSocket) factory.createSocket(Address, Port);
 
-		DataInputStream in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+		// OLD
+		ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+		byte[] result = (byte[]) in.readObject();
 		
-		// get data
-		ArrayList<Byte> inputList = new ArrayList<Byte>();
-		int count;
-		byte[] Buffer = new byte[32];
-		while ((count = in.read(Buffer)) > 0) {
-			byte[] found = Arrays.copyOfRange(Buffer, 0, count);
-			for (byte b : found) {
-				inputList.add(b);
-			}
-		}
-
-		// convert from Byte[] to byte[]
-		byte[] Result = new byte[inputList.size()];
-		for (int i = 0; i < inputList.size(); i++) {
-			Result[i] = inputList.get(i);
-		}
-
 		// close connections
 		in.close();
 		
-		return Result;
+		return result;
 	}
 }

@@ -1,0 +1,7 @@
+package be.msec.serviceProvider;
+
+import java.io.Serializable;
+
+public class ServiceProviderMessage implements Serializable {
+
+}
