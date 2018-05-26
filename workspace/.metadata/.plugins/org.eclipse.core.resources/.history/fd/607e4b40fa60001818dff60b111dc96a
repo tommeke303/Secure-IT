@@ -59,7 +59,6 @@ import javax.swing.border.BevelBorder;
 
 import com.sun.net.ssl.internal.ssl.Provider;
 
-import be.msec.serviceProvider.tools.SPtools;
 import javafx.util.Pair;
 
 import javax.swing.JSpinner;

@@ -59,7 +59,6 @@ import javax.swing.border.BevelBorder;
 
 import com.sun.net.ssl.internal.ssl.Provider;
 
-import be.msec.serviceProvider.tools.SPtools;
 import javafx.util.Pair;
 
 import javax.swing.JSpinner;
@@ -185,7 +184,7 @@ public class SPMain {
 								System.out.println("Challenge received from middelware.");
 								
 								// generate response							
-								byte[] responce = generateChallengeResponse(currMessage);
+								byte[] responce = generateChallengeResponce(currMessage);
 								
 								// sent back the response
 								out.writeObject(new SPmessage(SPmessageType.AUTH_SP, responce));
@@ -416,7 +415,7 @@ public class SPMain {
 	
 	// part of STEP 2, generating a responce for the challenge
 	@SuppressWarnings("unchecked")
-	private byte[] generateChallengeResponse(SPmessage challengeMessage){
+	private byte[] generateChallengeResponce(SPmessage challengeMessage){
 		// get the Ekey & Emsg from the SPmessage
 		Pair<byte[], byte[]> data = (Pair<byte[], byte[]>) challengeMessage.getData();
 		byte[] Ekey = data.getKey();
