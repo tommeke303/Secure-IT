@@ -17,11 +17,14 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
 
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
 import be.msec.serviceProvider.SPmessage;
+import be.msec.serviceProvider.SPmessageType;
+import javafx.util.Pair;
 
 public class SPClient {
 	// network address
@@ -58,5 +61,25 @@ public class SPClient {
 	
 	public X509Certificate getServiceCertificate(){
 		return this.cert;
+	}
+	
+	// sending a challenge to the SP - step 2 (8) & (13)
+	public byte[] sendChallenge(byte[] Ekey, byte[] Emsg){
+		byte[] res = null;
+		
+		try {
+			// send challenge & expect responce
+			out.writeObject(new SPmessage(SPmessageType.AUTH_SP, new Pair<byte[], byte[]>(Ekey, Emsg)));
+			SPmessage responce = (SPmessage)in.readObject();
+			
+			res = (byte[]) responce.getData();
+			
+			if (res == null)
+				throw new Exception("Something went wrong on the SP side");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return res;
 	}
 }

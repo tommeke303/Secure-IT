@@ -1,0 +1,34 @@
+package be.msec.serviceProvider;
+
+import java.security.cert.X509Certificate;
+
+public class SPtools {
+	// search for an attribute
+		public static String getCertificateServiceName(X509Certificate cert) {
+			return getCertificateAttribute(cert, "CN");
+		}
+
+		public static String getCertificateDomain(X509Certificate cert) {
+			return getCertificateAttribute(cert, "DC");
+		}
+
+		public static String getCertificateAttribute(X509Certificate cert, String Attribute) {
+			String input = cert.getSubjectDN().toString();
+			String output = "";
+
+			// loop through all attributes
+			for (String attr : input.split(", ")) {
+				String[] details = attr.split("=");
+				String attrName = details[0];
+				String attrValue = details[1];
+
+				// if correct attribute, set output & stop
+				if (attrName.toLowerCase().equals(Attribute.toLowerCase())) {
+					output = attrValue;
+					break;
+				}
+			}
+
+			return output;
+		}
+}

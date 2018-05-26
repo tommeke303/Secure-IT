@@ -5,6 +5,7 @@ import be.msec.client.connection.IConnection;
 import be.msec.client.connection.SimulatedConnection;
 import be.msec.government.client.GVMTimestampClient;
 import be.msec.serviceProvider.SPmessage;
+import be.msec.serviceProvider.SPtools;
 import be.msec.serviceProvider.client.SPClient;
 import javafx.util.Pair;
 
@@ -25,6 +26,7 @@ import java.util.Random;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 import javax.smartcardio.*;
 import javax.sql.rowset.serial.SerialBlob;
 
@@ -139,14 +141,17 @@ public class Client {
 			/**
 			 * STEP 2: authenticate Service Provider
 			 */
+			System.out.println("Making connection to SP.");
 			SPClient service = new SPClient();
 
 			// TODO (1) send this certificate to the javacard 
 			X509Certificate cert = service.getServiceCertificate();
+			System.out.println("Connected to SP and certificate received, forwarding to javacard.");
 
 			/**
 			 * TODO stuff to do on javacard
 			 * (2)-(8)
+			 * --------------------------------------------
 			 */
 
 			 // verify certificate
@@ -156,27 +161,24 @@ public class Client {
 			// (4) make symmetric key
 			String algSym = "AES";
 			Cipher cph = Cipher.getInstance(algSym);
-			Key symKey = KeyGenerator.getInstance("AES").generateKey();
+			SecretKey symKey = KeyGenerator.getInstance("AES").generateKey();
 
 			// (5) encrypt symKey with pk of cert
 			String algAsym = "RSA/ECB/PKCS1Padding";
 			PublicKey pk = cert.getPublicKey();
 			cph = Cipher.getInstance(algAsym);
-			System.out.println("alg: " + pk.getAlgorithm());
 			cph.init(Cipher.ENCRYPT_MODE, pk);
 			byte[] encryptedSymKey = cph.doFinal(symKey.getEncoded());
 
 			// (6) generate random nr
 			Random rand = new Random();
 			int n = rand.nextInt();
-			System.out.println("Random: " + n);
 
-			// (7)
-			Pair<Integer, X509Certificate> msg = new Pair<Integer, X509Certificate>(n, cert);
-			
+			// (7) encrypt challenge with symmetric key
+			Pair<Integer, String> msg = new Pair<Integer, String>(n, cert.getSubjectDN().getName());
 			cph = Cipher.getInstance(algSym);
 			cph.init(Cipher.ENCRYPT_MODE, symKey);
-			byte[] encryptedMsg = cph.doFinal(convertToBytes(msg));
+			byte[] encryptedMsg = cph.doFinal(SPtools.convertToBytes(msg));
 
 			/**
 			// conversion tests (working)
@@ -185,80 +187,52 @@ public class Client {
 			System.out.println("Converted twice: " + test.toString());
 			*/
 
-			// TODO (8) send encryptedMsg & encryptedSymKey to middelware
+			// TODO (8).1 send encryptedMsg & encryptedSymKey to middelware
+			/**
+			 * --------------------------------------------------
+			 */
+			System.out.println("Challenge received from javacard, forwarding to SP.");
+			// (8).2 & (13).1 sending encryptedMsg & encryptedSymKey to SP & receiving responce
+			byte[] challengeResponce = service.sendChallenge(encryptedSymKey, encryptedMsg);
+			System.out.println("Challenge responce receive, forwarding to javacard.");
+			// TODO (13).2 send challengeResponce to javacard
 			
+			/**
+			 * TODO (14)-(16) needs to be done on the javacard
+			 * -------------------------
+			 */
+			
+			// (14) get challenge nr & certificate name
+			cph = Cipher.getInstance(algSym);
+			cph.init(Cipher.DECRYPT_MODE, symKey);
+			byte[] decryptedMsg = cph.doFinal(challengeResponce);
+			Integer responce = (Integer) SPtools.convertToObject(decryptedMsg);
+			
+			// (15) verify responce
+			if (responce != n+1) 
+		        throw new Exception("Incorrect challenge responce received");
+			
+			// (16) flag authenticate
+			boolean auth = true;
+			
+			/**
+			 * -----------------------------
+			 */
+			
+			/**
+			 * STEP 3: authenticate card
+			 */
+			
+			
+			System.out.println("Everything worked!");
 			// just to keep client running
 			while (true) {
-
 			}
 
 		} catch (Exception e) {
 			throw e;
 		} finally {
 			c.close(); // close the connection with the card
-		}
-	}
-
-	// search for an attribute
-	public static String getCertificateServiceName(X509Certificate cert) {
-		return getCertificateAttribute(cert, "CN");
-	}
-
-	public static String getCertificateDomain(X509Certificate cert) {
-		return getCertificateAttribute(cert, "DC");
-	}
-
-	public static String getCertificateAttribute(X509Certificate cert, String Attribute) {
-		String input = cert.getSubjectDN().toString();
-		String output = "";
-
-		// loop through all attributes
-		for (String attr : input.split(", ")) {
-			String[] details = attr.split("=");
-			String attrName = details[0];
-			String attrValue = details[1];
-
-			// if correct attribute, set output & stop
-			if (attrName.toLowerCase().equals(Attribute.toLowerCase())) {
-				output = attrValue;
-				break;
-			}
-		}
-
-		return output;
-	}
-
-	public static byte[] convertToBytes(Object input) {
-		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-		ObjectOutput out = null;
-		try {
-			out = new ObjectOutputStream(bos);
-			out.writeObject(input);
-			out.flush();
-			byte[] yourBytes = bos.toByteArray();
-
-			bos.close();
-
-			return yourBytes;
-		} catch (Exception ex) {
-			return null;
-		}
-	}
-
-	public static Object convertToObject(byte[] yourBytes) {
-		ByteArrayInputStream bis = new ByteArrayInputStream(yourBytes);
-		ObjectInput in = null;
-		try {
-			in = new ObjectInputStream(bis);
-			Object o = in.readObject();
-
-			in.close();
-
-			return o;
-		} catch (Exception ex) {
-			// ignore close exception
-
-			return null;
 		}
 	}
 }

@@ -1,0 +1,16 @@
+package be.msec.serviceProvider;
+
+/**
+ * CLOSE: This connection will be closed
+ * SP_CERTIFICATE: The certificate of the service provider is sent
+ * CHALLENGE: A challenge is sent, the data consists of a pair<Ekey, Emsg>
+ * 
+ * @author Pedro
+ *
+ */
+public enum SPmessageType{
+	CLOSE,
+	SP_CERTIFICATE,
+	AUTH_SP
+	
+}

@@ -20,6 +20,10 @@ import javax.swing.JDesktopPane;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.swing.AbstractAction;
@@ -36,20 +40,26 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.file.Paths;
+import java.security.Key;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.Security;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
 import java.awt.Window.Type;
 import javax.swing.JList;
 import javax.swing.AbstractListModel;
 import javax.swing.border.BevelBorder;
 
 import com.sun.net.ssl.internal.ssl.Provider;
+
+import javafx.util.Pair;
 
 import javax.swing.JSpinner;
 import javax.swing.ListSelectionModel;
@@ -59,6 +69,7 @@ import java.awt.Cursor;
 import javax.swing.JTextArea;
 import javax.swing.JRadioButton;
 
+@SuppressWarnings("rawtypes")
 public class SPMain {
 	// server info
 	private int ssPort = 1251;
@@ -70,6 +81,13 @@ public class SPMain {
 			+ "Certificates" + File.separator;
 	private String serviceProviderKeyStore = keyStorePath + "ServiceProvider.jks";
 	private String serviceProviderKeyPassword = "password";
+	
+	// encryption variables
+	private String algAsym = "RSA/ECB/PKCS1Padding";
+	private String algSym = "AES";
+	private PrivateKey pr;
+	private SecretKeySpec symKey;
+	private X509Certificate chosenCert;
 
 	// window info
 	private JFrame frmFrame;
@@ -136,15 +154,16 @@ public class SPMain {
 						// wait until previous is done
 						while (!isWaitingForNewConnection) {
 						}
-// TODO
+						
 						// accept new connection
 						Socket socket = ssocket.accept();
 						out = new ObjectOutputStream(socket.getOutputStream());
 						in = new ObjectInputStream(socket.getInputStream());
-						System.out.println("\nNew connection accepted");
+						System.out.println("\nNew connection accepted.");
 
 						SPmessage currMessage = new SPmessage(SPmessageType.SP_CERTIFICATE);
 
+						// TODO process messages
 						// show service selection
 						getTabbedPane();
 						while (currMessage.getMessageType() != SPmessageType.CLOSE) {
@@ -152,6 +171,7 @@ public class SPMain {
 							
 							// check message type
 							switch (currMessage.getMessageType()) {
+							// close connection
 							case CLOSE:
 								in.close();
 								out.close();
@@ -159,8 +179,22 @@ public class SPMain {
 								isWaitingForNewConnection = true;
 								break;
 
+							// receive a challenge
+							case AUTH_SP:
+								System.out.println("Challenge received from middelware.");
+								
+								// generate responce							
+								byte[] responce = generateChallengeResponce(currMessage);
+								
+								// sent back the responce
+								out.writeObject(new SPmessage(SPmessageType.AUTH_SP, responce));
+								System.out.println("Challenge responce sent.");
+								
+								
+							break;
+								
 							default:
-								System.out.println("Message not implemented: " + currMessage.getMessageType());
+								System.out.println("Message type not implemented: " + currMessage.getMessageType());
 								break;
 							}
 						}
@@ -192,7 +226,7 @@ public class SPMain {
 		//getTabbedPane();
 	}
 
-	@SuppressWarnings({ "unchecked", "rawtypes", "serial" })
+	@SuppressWarnings({ "unchecked", "serial" })
 	private void getTabbedPane() {
 		isWaitingForNewConnection = false;
 
@@ -362,18 +396,60 @@ public class SPMain {
 			ks.load(fis, ServicePassword.toCharArray());
 			fis.close();
 
+			// remember private key during session
+			pr = (PrivateKey) ks.getKey(CertificateName, ServicePassword.toCharArray());
+			
 			// get certificate
-			Certificate cert = ks.getCertificate(CertificateName);
+			chosenCert = (X509Certificate) ks.getCertificate(CertificateName);
 			
 			// send certificate
-			out.writeObject(new SPmessage(SPmessageType.SP_CERTIFICATE, cert));
+			out.writeObject(new SPmessage(SPmessageType.SP_CERTIFICATE, chosenCert));
 			System.out.println("Certificate sent");
 
 			// show waiting again
 			getWaitingPanel();
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+	
+	// part of STEP 2, generating a responce for the challenge
+	@SuppressWarnings("unchecked")
+	private byte[] generateChallengeResponce(SPmessage challengeMessage){
+		// get the Ekey & Emsg from the SPmessage
+		Pair<byte[], byte[]> data = (Pair<byte[], byte[]>) challengeMessage.getData();
+		byte[] Ekey = data.getKey();
+		byte[] Emsg = data.getValue();
+		
+		byte[] responce = null;
+		try {
+			// (9) get symmetric key
+			Cipher cph;
+			cph = Cipher.getInstance(algAsym);
+			cph.init(Cipher.DECRYPT_MODE, pr);
+			byte[] decryptedSymKey = cph.doFinal(Ekey);
+			symKey = new SecretKeySpec(decryptedSymKey, 0, decryptedSymKey.length, "AES");
+
+			// (10) get challenge nr & certificate name
+			cph = Cipher.getInstance(algSym);
+			cph.init(Cipher.DECRYPT_MODE, symKey);
+			byte[] decryptedMsg = cph.doFinal(Emsg);
+			Pair<Integer, String> msg = (Pair<Integer, String>) SPtools.convertToObject(decryptedMsg);
+
+			// (11) check name, abort if incorrect
+			String msgName = msg.getValue();
+			String expectedName = chosenCert.getSubjectDN().getName();
+			if (!msgName.equals(expectedName))
+		        throw new Exception("Received '" + msgName + "', expected '" + expectedName + "'");
+			
+			// (12) incr challenge & encrypt with symmetric key
+			cph = Cipher.getInstance(algSym);
+			cph.init(Cipher.ENCRYPT_MODE, symKey);
+			responce = cph.doFinal(SPtools.convertToBytes(msg.getKey() + 1));
+		} catch (Exception e) {
+			e.printStackTrace();
+		} 
+		
+		return responce;		
 	}
 }
