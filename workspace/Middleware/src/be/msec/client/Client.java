@@ -169,9 +169,10 @@ public class Client {
 				// (6)->(9)
 				Pair<byte[], Timestamp> encryptedTimestamp = new GVMTimestampClient().getTimestampRaw();
 				
+				byte[] encryptedTimestampByteArray = convertToBytes(encryptedTimestamp);
 				
 				// TODO: (9)->(12) in javacard
-				a = new CommandAPDU(IDENTITY_CARD_CLA, SIG_TIME, 0x00, 0x00, encryptedTimestamp);
+				a = new CommandAPDU(IDENTITY_CARD_CLA, SIG_TIME, 0x00, 0x00, encryptedTimestampByteArray);
 				r = c.transmit(a);
 				
 				// get public key, dees is enkel voor in de client.java, normaal
