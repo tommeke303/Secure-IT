@@ -12,8 +12,14 @@ import be.msec.serviceProvider.tools.SPtools;
 import javafx.util.Pair;
 import sun.misc.Resource;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import java.nio.file.Paths;
 import java.security.KeyStore;
 import java.security.MessageDigest;
@@ -41,6 +47,8 @@ public class Client {
 	private static final byte VALIDATE_PIN_INS = 0x22;
 	private final static short SW_VERIFICATION_FAILED = 0x6300;
 	private final static short SW_PIN_VERIFICATION_REQUIRED = 0x6301;
+	private static final byte HELLO = 0x24;
+	private static final byte SIG_TIME = 0x29;
 	private static String algSym;
 	private static Cipher cph;
 	private static SecretKey symKey;
@@ -130,7 +138,20 @@ public class Client {
 			 */
 			// TODO: (2): send "hello" + current time to card
 			Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+			byte[] currentTimeBytes = convertToBytes(timestamp);
+			
+			a = new CommandAPDU(IDENTITY_CARD_CLA, HELLO, 0x00, 0x00, convertToBytes(new Timestamp(System.currentTimeMillis())));
+			r = c.transmit(a);
+			
+			Boolean reqRevalidation;
+			if (r.getSW() == SW_CONDITIONS_NOT_SATISFIED) {
+				reqRevalidation = false;
+			}
+			else {
+				reqRevalidation = true;
+			}
 
+			/*
 			// TODO: (3) todo on javacard
 			// 1sec, 1min, 1hour, 1 day, a week
 			long threshold = 1000 * 60 * 60 * 24 * 7; // example threshold
@@ -142,14 +163,17 @@ public class Client {
 			Boolean reqRevalidation = lastValidationTime.getTime() < (timestamp.getTime() - threshold);
 
 			// TODO: (4): receive 'reqValidation' from card
-
+			 */
 			// (5), set new time when revalidation is required
 			if (reqRevalidation) {
 				// (6)->(9)
 				Pair<byte[], Timestamp> encryptedTimestamp = new GVMTimestampClient().getTimestampRaw();
-
+				
+				
 				// TODO: (9)->(12) in javacard
-
+				a = new CommandAPDU(IDENTITY_CARD_CLA, SIG_TIME, 0x00, 0x00, encryptedTimestamp);
+				r = c.transmit(a);
+				
 				// get public key, dees is enkel voor in de client.java, normaal
 				// heeft de javacard de public key van government al opgeslagen
 				String keyStorePath = Paths.get(System.getProperty("user.dir")).getParent().toString() + File.separator
@@ -480,4 +504,39 @@ public class Client {
 		
 		return encryptedData;
 	}
+	// encode something to bytes
+    public static byte[] convertToBytes(Object input) {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutput out = null;
+        try {
+            out = new ObjectOutputStream(bos);
+            out.writeObject(input);
+            out.flush();
+            byte[] yourBytes = bos.toByteArray();
+
+            bos.close();
+
+            return yourBytes;
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+		
+    // decode something to bytes
+    public static Object convertToObject(byte[] yourBytes) {
+        ByteArrayInputStream bis = new ByteArrayInputStream(yourBytes);
+        ObjectInput in = null;
+        try {
+            in = new ObjectInputStream(bis);
+            Object o = in.readObject();
+
+            in.close();
+
+            return o;
+        } catch (Exception ex) {
+            // ignore close exception
+
+            return null;
+        }
+    }
 }

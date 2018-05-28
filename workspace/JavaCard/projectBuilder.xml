@@ -2,7 +2,7 @@
 <project>
     <!-- Global properties -->
     <property name="srcDir" value="${basedir}/src"/>
-    <property name="cardDir" value="/media/sf_Security-Project/java_card_kit-2_2_2"/>
+    <property name="cardDir" value="/Users/Thomas/eclipse-workspace/java_card_kit-2_2_2-linux/java_card_kit-2_2_2/java_card_kit-2_2_2-rr-bin-linux-do/lib"/>
     <property name="targetDir" value="${basedir}/target"/>
 	<property name="build.compiler" value="org.eclipse.jdt.core.JDTCompilerAdapter"/>
 	

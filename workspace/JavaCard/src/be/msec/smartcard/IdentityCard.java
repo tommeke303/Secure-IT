@@ -1,6 +1,16 @@
 package be.msec.smartcard;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import java.security.interfaces.RSAPrivateKey;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 
 import javacard.framework.APDU;
 import javacard.framework.Applet;
@@ -14,7 +24,7 @@ public class IdentityCard extends Applet {
 	private final static byte IDENTITY_CARD_CLA = (byte) 0x80;
 
 	private static final byte VALIDATE_PIN_INS = 0x22;
-	private static final byte GET_NAME_INS = 0x24;
+	private static final byte HELLO = 0x24;
 	private static final byte GET_SERIAL_INS = 0x26;
 
 	private final static byte PIN_TRY_LIMIT = (byte) 0x03;
@@ -93,6 +103,7 @@ public class IdentityCard extends Applet {
 	private byte[] serial = new byte[] { (byte) 0x4A, (byte) 0x61, (byte) 0x6e };
 	private byte[] name = new byte[] { 0x4A, 0x61, 0x6E, 0x20, 0x56, 0x6F, 0x73, 0x73, 0x61, 0x65, 0x72, 0x74 };
 	private OwnerPIN pin;
+	private byte[] lastValidationTime;
 
 	/*
 	// make private key?
@@ -117,6 +128,10 @@ public class IdentityCard extends Applet {
 		pin = new OwnerPIN(PIN_TRY_LIMIT,PIN_SIZE);
 		pin.update(new byte[]{0x01,0x02,0x03,0x04},(short) 0, PIN_SIZE);
 		
+		/*
+		 * Initialising the lastValidationTime to the time of creation
+		 */
+		lastValidationTime = convertToBytes(new Timestamp(System.currentTimeMillis()));
 		/*
 		 * This method registers the applet with the JCRE on the card.
 		 */
@@ -165,8 +180,8 @@ public class IdentityCard extends Applet {
 		case GET_SERIAL_INS:
 			getSerial(apdu);
 			break;
-		case GET_NAME_INS:
-			getName(apdu);
+		case HELLO:
+			reqRevalidation(apdu);
 			break;
 		// If no matching instructions are found it is indicated in the status
 		// word of the response.
@@ -242,18 +257,94 @@ public class IdentityCard extends Applet {
 		}
 	}
 
-	private void getName(APDU apdu) {
+private byte[] read_Data(APDU apdu) {
+		
+		byte buffer[] = apdu.getBuffer();
+		short length = (short) buffer[ISO7816.OFFSET_LC];
+		byte[] temp = new byte[length];
+		
+		short offset = 0;
+		short readCount = apdu.setIncomingAndReceive();
+		
+		while(length >0) {
+			for (short i = 0; i<readCount; i++) {
+				temp[offset + i] = buffer[ISO7816.OFFSET_CDATA + offset + i];
+			}
+			length -= readCount;
+			offset += readCount;
+			readCount = apdu.receiveBytes (ISO7816.OFFSET_CDATA);
+		}
+		
+		return temp;
+	}
+
+	private void reqRevalidation(APDU apdu) {
 		// If the pin is not validated, a response APDU with the
 		// 'SW_PIN_VERIFICATION_REQUIRED' status word is transmitted.
 		if (!pin.isValidated())
 			ISOException.throwIt(SW_PIN_VERIFICATION_REQUIRED);
 		else {
-			// This sequence of three methods sends the data contained in
-			// 'serial' with offset '0' and length 'serial.length'
-			// to the host application.
-			apdu.setOutgoing();
-			apdu.setOutgoingLength((short) name.length);
-			apdu.sendBytesLong(name, (short) 0, (short) name.length);
+			
+			Calendar cal = Calendar.getInstance();
+			short res;
+			
+			SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSS");
+			Date parsedValidDate = null;
+			Date parsedCurrentDate = null;
+			try {
+				parsedValidDate = dateFormat.parse(String.valueOf(convertToObject(lastValidationTime)));
+				parsedCurrentDate = dateFormat.parse(String.valueOf(convertToObject(read_Data(apdu))));
+			}
+			catch(Exception e) {
+				System.out.println(e);
+			}
+			
+			Timestamp validTime = new Timestamp(parsedValidDate.getTime());
+			Timestamp currentTime = new Timestamp(parsedCurrentDate.getTime());
+			
+			cal.setTimeInMillis(validTime.getTime());
+			cal.add(Calendar.HOUR, 24);
+			validTime = new Timestamp(cal.getTime().getTime());
+			
+			if (validTime.before(currentTime)) {
+				ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
+			}
+		}
+	}
+	
+	// encode something to bytes
+	public static byte[] convertToBytes(Object input) {
+		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		ObjectOutput out = null;
+		try {
+			out = new ObjectOutputStream(bos);
+			out.writeObject(input);
+			out.flush();
+			byte[] yourBytes = bos.toByteArray();
+
+			bos.close();
+
+			return yourBytes;
+		} catch (Exception ex) {
+			return null;
+		}
+	}
+	
+	// decode something to bytes
+	public static Object convertToObject(byte[] yourBytes) {
+		ByteArrayInputStream bis = new ByteArrayInputStream(yourBytes);
+		ObjectInput in = null;
+		try {
+			in = new ObjectInputStream(bis);
+			Object o = in.readObject();
+
+			in.close();
+
+			return o;
+		} catch (Exception ex) {
+			// ignore close exception
+
+			return null;
 		}
 	}
 }

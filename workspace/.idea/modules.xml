@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/CertificateAuthority/CertificateAuthority.iml" filepath="$PROJECT_DIR$/CertificateAuthority/CertificateAuthority.iml" />
+      <module fileurl="file://$PROJECT_DIR$/JavaCard/JavaCard.iml" filepath="$PROJECT_DIR$/JavaCard/JavaCard.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Middleware/Middleware.iml" filepath="$PROJECT_DIR$/Middleware/Middleware.iml" />
+      <module fileurl="file://$PROJECT_DIR$/RemoteSystemsTempFiles/RemoteSystemsTempFiles.iml" filepath="$PROJECT_DIR$/RemoteSystemsTempFiles/RemoteSystemsTempFiles.iml" />
+      <module fileurl="file://$PROJECT_DIR$/ServiceProvider/ServiceProvider.iml" filepath="$PROJECT_DIR$/ServiceProvider/ServiceProvider.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Timestamp Service/Timestamp Service.iml" filepath="$PROJECT_DIR$/Timestamp Service/Timestamp Service.iml" />
+    </modules>
+  </component>
+</project>
