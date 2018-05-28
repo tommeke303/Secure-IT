@@ -1,3 +1,5 @@
 1527260657852	Rename type 'TimestampService'
 1527261158012	Rename type 'Main'
 1527261175340	Rename type 'BVMMain'
+1527365627744	Rename local variable 'Raw'
+1527365873303	Move compilation unit

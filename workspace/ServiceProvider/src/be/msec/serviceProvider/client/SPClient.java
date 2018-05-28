@@ -1,24 +1,9 @@
 package be.msec.serviceProvider.client;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.net.Socket;
-import java.net.UnknownHostException;
-import java.nio.file.Paths;
-import java.security.cert.Certificate;
-import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.concurrent.ExecutionException;
-
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
@@ -31,13 +16,6 @@ public class SPClient {
 	private String Address = "localhost";
 	private int Port = 1251;
 
-	// find keystore
-	private String keyStorePath = Paths.get(System.getProperty("user.dir")).getParent().toString() + File.separator
-			+ "Certificates" + File.separator;
-	private String ClientKeyStore = keyStorePath + "common.jks";
-	private String ClientKeyPassword = "password";
-	private String CertificateName = "serviceprovider (ca)";
-	
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
 	private X509Certificate cert;
@@ -59,11 +37,36 @@ public class SPClient {
 		System.out.println("Certificate details: " + cert.getSubjectDN());
 	}
 	
+	/**
+	 * close connection
+	 */
+	public void close(){
+		try {
+			in.close();
+			out.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void sendData(SPmessageType msgType, Object data){
+		try {
+			out.writeObject(new SPmessage(msgType, data));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
 	public X509Certificate getServiceCertificate(){
 		return this.cert;
 	}
 	
-	// sending a challenge to the SP - step 2 (8) & (13)
+	/**
+	 * sending a challenge to the SP - step 2 (8) & (13)
+	 * @param Ekey
+	 * @param Emsg
+	 * @return Returns the responce, received from the SP.
+	 */
 	public byte[] sendChallenge(byte[] Ekey, byte[] Emsg){
 		byte[] res = null;
 		
@@ -81,5 +84,41 @@ public class SPClient {
 		}
 		
 		return res;
+	}
+	
+	public byte[] receiveChallenge(){
+		byte[] res = null;
+		
+		try {
+			// wait for response from SP
+			SPmessage input = (SPmessage) in.readObject();
+			
+			// check message type
+			if (input.getMessageType() != SPmessageType.AUTH_CARD)
+				throw new Exception("Expected an 'AUTH_CARD' message from SP, received: " + input.getMessageType());
+				
+			res = (byte[]) input.getData();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return res;
+	}
+	
+	public void sendChallengeResponce(byte[] response){
+		try {
+			out.writeObject(new SPmessage(SPmessageType.AUTH_CARD, response));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public SPmessage awaitQuery() throws ClassNotFoundException, IOException{
+		try {
+			return (SPmessage) in.readObject();			
+		} catch (Exception e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
 }

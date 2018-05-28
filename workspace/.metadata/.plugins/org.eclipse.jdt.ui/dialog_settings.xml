@@ -105,8 +105,11 @@
 		<item value="false" key="JarManifestWizardPage.SAVE_MANIFEST"/>
 		<item value="false" key="JarPackageWizardPage.EXPORT_OUTPUT_FOLDER"/>
 		<list key="JarPackageWizardPage.DESTINATION_NAMES_ID">
+			<item value="ServiceProvider/libs/SPimages.jar"/>
 			<item value="Middleware\libs\SPClient.jar"/>
 			<item value="Middleware\libs\GVMTimestampClient.jar"/>
+			<item value="Timestamp Service/libs/SPClient.jar"/>
+			<item value="JavaCard/libs/SPtools.jar"/>
 			<item value="Middleware/libs/SPClient.jar"/>
 			<item value="Middleware/libs/governmentClient.jar"/>
 		</list>

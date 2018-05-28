@@ -1,0 +1,23 @@
+package be.msec.serviceProvider;
+
+/**
+ * The possible service domains
+ * 
+ * @author Pedro
+ *
+ */
+public enum SPdomain{
+	CLOSE,
+	SP_CERTIFICATE,
+	AUTH_SP,
+	AUTH_CARD,
+	DATA_NYM,
+	DATA_NAME,
+	DATA_ADDRESS,
+	DATA_SIGNATURE,
+	DATA_BIRTHDATE,
+	DATA_AGE,
+	DATA_GENDER,
+	DATA_PICTURE,
+	DATA_PASSPORT
+}

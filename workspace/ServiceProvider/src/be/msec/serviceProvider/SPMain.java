@@ -9,66 +9,57 @@ import java.awt.Dimension;
 
 import javax.swing.JTabbedPane;
 import javax.swing.JPanel;
-import javax.swing.BoxLayout;
-import javax.swing.GroupLayout.Alignment;
-
-import java.awt.FlowLayout;
-import java.awt.TrayIcon.MessageType;
-
 import javax.swing.SwingConstants;
-import javax.swing.JDesktopPane;
 import javax.swing.JButton;
-import javax.swing.JComponent;
 import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
-import javax.swing.AbstractAction;
 import java.awt.event.ActionEvent;
-import javax.swing.Action;
 import java.awt.event.ActionListener;
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.file.Paths;
-import java.security.Key;
 import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Security;
-import java.security.cert.Certificate;
+import java.security.Signature;
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.concurrent.ExecutionException;
-import java.awt.Window.Type;
+import java.sql.Timestamp;
+import java.util.Random;
 import javax.swing.JList;
 import javax.swing.AbstractListModel;
-import javax.swing.border.BevelBorder;
-
 import com.sun.net.ssl.internal.ssl.Provider;
 
 import be.msec.serviceProvider.tools.SPtools;
 import javafx.util.Pair;
 
-import javax.swing.JSpinner;
-import javax.swing.ListSelectionModel;
 import javax.swing.JScrollPane;
 import java.awt.Component;
 import java.awt.Cursor;
-import javax.swing.JTextArea;
-import javax.swing.JRadioButton;
+import java.awt.FlowLayout;
+import javax.swing.BoxLayout;
+import javax.swing.JInternalFrame;
+import javax.swing.GroupLayout;
+import javax.swing.GroupLayout.Alignment;
+import javax.swing.LayoutStyle.ComponentPlacement;
+import java.awt.Font;
+import javax.swing.JTextField;
+import javax.swing.ScrollPaneConstants;
+import java.awt.Color;
+import javax.swing.ImageIcon;
+import javax.swing.border.BevelBorder;
+import javax.swing.border.CompoundBorder;
+import javax.swing.border.EtchedBorder;
+import javax.swing.border.LineBorder;
+import javax.swing.border.MatteBorder;
+import javax.swing.border.SoftBevelBorder;
+import javax.swing.border.TitledBorder;
 
 @SuppressWarnings("rawtypes")
 public class SPMain {
@@ -82,7 +73,7 @@ public class SPMain {
 			+ "Certificates" + File.separator;
 	private String serviceProviderKeyStore = keyStorePath + "ServiceProvider.jks";
 	private String serviceProviderKeyPassword = "password";
-	
+
 	// encryption variables
 	private String algAsym = "RSA/ECB/PKCS1Padding";
 	private String algSym = "AES";
@@ -92,23 +83,23 @@ public class SPMain {
 
 	// window info
 	private JFrame frmFrame;
-	private JPanel tabWaiting;
-	private JPanel tabDefault;
-	private JPanel tabEGov;
-	private JPanel tabBank;
-	private JPanel tabExtra;
-	private JTabbedPane tabbedPane;
 
-	private String[] valuesEGov = new String[] { "MyPension", "Tax-On-Web",  };
+	private String[] valuesEGov = new String[] { "MyPension", "Tax-On-Web", };
 	private String[] valuesBank = new String[] { "ING", "KBC" };
 	private String[] valuesExtra = new String[] { "Eye-Institute-Aalst", "Wellness-Kliniek-Genk" };
 	private String[] valuesDefault = new String[] { "GameCenter", "VendingMachine" };
 
-	private JList lstEGov;
-	private JList lstDefault;
-	private JList lstExtra;
-	private JList lstBank;
 	private boolean isWaitingForNewConnection = true;
+	private JTextField txtNym;
+	private JTextField txtName;
+	private JTextField txtAddress;
+	private JTextField txtBirthDate;
+	private JTextField txtAge;
+	private JTextField txtGender;
+	private JTextField txtPassportNr;
+	private JLabel lblSignature;
+	private JLabel lblPicture;
+	private JLabel lblServiceName;
 
 	/**
 	 * Launch the application.
@@ -116,7 +107,7 @@ public class SPMain {
 	public static void main(String[] args) {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
-				try {
+				try {					
 					SPMain window = new SPMain();
 					window.frmFrame.setVisible(true);
 				} catch (Exception e) {
@@ -137,6 +128,7 @@ public class SPMain {
 
 		new Thread(new Runnable() {
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public void run() {
 				try {
@@ -144,6 +136,19 @@ public class SPMain {
 					Security.addProvider(new Provider());
 					System.setProperty("javax.net.ssl.keyStore", serviceProviderKeyStore);
 					System.setProperty("javax.net.ssl.keyStorePassword", serviceProviderKeyPassword);
+
+					// get common certificate & remember
+
+					String keyStorePath = Paths.get(System.getProperty("user.dir")).getParent().toString()
+							+ File.separator + "Certificates" + File.separator;
+					String SPKeyStore = keyStorePath + "ServiceProvider.jks";
+					String SPPassword = "password";
+					String CertificateName = "ca";
+					KeyStore keyStore = KeyStore.getInstance("JKS");
+					FileInputStream fis = new FileInputStream(SPKeyStore);
+					keyStore.load(fis, SPPassword.toCharArray());
+					fis.close();
+					PublicKey pkCA = keyStore.getCertificate(CertificateName).getPublicKey();
 
 					// make ssl server socket
 					SSLServerSocketFactory factory = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
@@ -155,7 +160,7 @@ public class SPMain {
 						// wait until previous is done
 						while (!isWaitingForNewConnection) {
 						}
-						
+
 						// accept new connection
 						Socket socket = ssocket.accept();
 						out = new ObjectOutputStream(socket.getOutputStream());
@@ -163,37 +168,127 @@ public class SPMain {
 						System.out.println("\nNew connection accepted.");
 
 						SPmessage currMessage = new SPmessage(SPmessageType.SP_CERTIFICATE);
+						int challengeNr = 0;
 
 						// TODO process messages
 						// show service selection
 						getTabbedPane();
 						while (currMessage.getMessageType() != SPmessageType.CLOSE) {
 							currMessage = (SPmessage) in.readObject();
-							
+							Cipher cph;
+
 							// check message type
 							switch (currMessage.getMessageType()) {
 							// close connection
 							case CLOSE:
-								in.close();
-								out.close();
-
-								isWaitingForNewConnection = true;
+								closeConnection();
 								break;
 
 							// receive a challenge
 							case AUTH_SP:
+								/**
+								 * part of STEP 2
+								 */
 								System.out.println("Challenge received from middelware.");
-								
-								// generate response							
+
+								// generate response (9)-(12)
 								byte[] responce = generateChallengeResponse(currMessage);
-								
-								// sent back the response
+
+								// sent back the response (13)
 								out.writeObject(new SPmessage(SPmessageType.AUTH_SP, responce));
 								System.out.println("Challenge responce sent.");
-								
-								
-							break;
-								
+
+								/**
+								 * STEP 3 start
+								 */
+								// (1) generate random nr as challenge
+								Random rand = new Random();
+								challengeNr = rand.nextInt();
+
+								// (2) encrypt challenge
+								cph = Cipher.getInstance(algSym);
+								cph.init(Cipher.ENCRYPT_MODE, symKey);
+								byte[] encryptedChallenge = cph.doFinal(SPtools.convertToBytes(challengeNr));
+								System.out.println("Challenge generated for the javacard.");
+
+								// (3).1 send challenge to middelware
+								out.writeObject(new SPmessage(SPmessageType.AUTH_CARD, encryptedChallenge));
+								System.out.println("Challenge sent to middelware.");
+								break;
+
+							case AUTH_CARD:
+								System.out.println("Challenge response received from middelware.");
+
+								// continuation of STEP 3
+								// (9) decrypt & get certificate & signature
+								cph = Cipher.getInstance(algSym);
+								cph.init(Cipher.DECRYPT_MODE, symKey);
+								byte[] decryptedMsg = cph.doFinal((byte[]) currMessage.getData());
+								Pair<X509Certificate, byte[]> msg = (Pair<X509Certificate, byte[]>) SPtools
+										.convertToObject(decryptedMsg);
+
+								// (10) verify certificate, with the CA
+								X509Certificate cert = msg.getKey();
+								cert.verify(pkCA);
+								System.out.println("Certificate verified.");
+
+								// (11) verify signature
+								Signature sig = Signature.getInstance("SHA1WithRSA");
+								sig.initVerify(cert.getPublicKey());
+								sig.update((challengeNr + "Auth").getBytes());
+								if (!sig.verify(msg.getValue()))
+									throw new Exception("Signature from javacard does not match");
+								System.out.println("Signature verified.");
+
+								// STEP 4: ask for all attributes the SP has the
+								// right to
+								lblServiceName.setText(SPtools.getCertificateServiceName(chosenCert));
+								for (SPmessageType msgType : SPmessageType.values()) {
+									if (SPtools.checkRights(SPtools.getCertificateDomain(chosenCert), msgType)) {
+										out.writeObject(new SPmessage(msgType, null));
+									}
+								}
+								break;
+
+							// STEP 4, receiving data
+							case DATA_NYM:
+								System.out.println("data: " + currMessage.getData());
+								byte[] syn = symDecrypt(currMessage.getData());
+								txtNym.setText(new String(syn));
+								break;
+							case DATA_NAME:
+								String name = (String) SPtools.convertToObject(symDecrypt(currMessage.getData()));
+								txtName.setText(name);
+								break;
+							case DATA_ADDRESS:
+								String address = (String) SPtools.convertToObject(symDecrypt(currMessage.getData()));
+								txtAddress.setText(address);
+								break;
+							case DATA_SIGNATURE:
+								ImageIcon signature = (ImageIcon) SPtools.convertToObject(symDecrypt(currMessage.getData()));
+								lblSignature.setIcon(signature);
+								break;
+							case DATA_BIRTHDATE:
+								Timestamp birthdate = (Timestamp) SPtools.convertToObject(symDecrypt(currMessage.getData()));
+								txtBirthDate.setText(birthdate.toString());
+								break;
+							case DATA_AGE:
+								Integer age = (Integer) SPtools.convertToObject(symDecrypt(currMessage.getData()));
+								txtAge.setText(age + "");
+								break;
+							case DATA_GENDER:
+								String gender = (String) SPtools.convertToObject(symDecrypt(currMessage.getData()));
+								txtGender.setText(gender);
+								break;
+							case DATA_PICTURE:
+								ImageIcon picture = (ImageIcon) SPtools.convertToObject(symDecrypt(currMessage.getData()));
+								lblPicture.setIcon(picture);
+								break;
+							case DATA_PASSPORT:
+								String passPort = (String) SPtools.convertToObject(symDecrypt(currMessage.getData()));
+								txtPassportNr.setText(passPort);
+								break;
+
 							default:
 								System.out.println("Message type not implemented: " + currMessage.getMessageType());
 								break;
@@ -207,36 +302,62 @@ public class SPMain {
 		}).start();
 	}
 
+	private byte[] symDecrypt(Object data) {
+		byte[] decryptedData = null;
+
+		Cipher cph;
+		try {			
+			cph = Cipher.getInstance(algSym);
+			cph.init(Cipher.DECRYPT_MODE, symKey);
+			decryptedData = cph.doFinal((byte[])data);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return decryptedData;
+	}
+
+	private void closeConnection() throws IOException {
+		in.close();
+		out.close();
+
+		isWaitingForNewConnection = true;
+	}
+
 	/**
 	 * Initialize the contents of the frame.
 	 */
 
 	private void initialize() {
 		frmFrame = new JFrame();
-		frmFrame.setBounds(100, 100, 311, 185);
+		frmFrame.setBounds(700, 100, 230, 140);
 		frmFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frmFrame.setMinimumSize(new Dimension(300, 250));
-		frmFrame.getContentPane().setLayout(new BorderLayout(0, 0));
+		frmFrame.setMinimumSize(new Dimension(230, 140));
 
-		tabbedPane = new JTabbedPane(JTabbedPane.TOP);
-		tabbedPane.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-		frmFrame.getContentPane().add(tabbedPane);
-
-		// show waiting
+		// show panel
 		getWaitingPanel();
-		//getTabbedPane();
+		// getTabbedPane();
+		// getResultsPanel();
+	}
+
+	// clean window
+	private void cleanWindow() {
+		if (frmFrame.getContentPane().getComponentCount() > 0)
+			frmFrame.getContentPane().remove(0);
 	}
 
 	@SuppressWarnings({ "unchecked", "serial" })
 	private void getTabbedPane() {
-		isWaitingForNewConnection = false;
-
+		cleanWindow();
 		frmFrame.setTitle("Select a service");
 
-		if (tabWaiting != null)
-			tabbedPane.removeTabAt(tabbedPane.indexOfComponent(tabWaiting));
+		JTabbedPane tabbedPane = new JTabbedPane(JTabbedPane.TOP);
+		tabbedPane.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+		frmFrame.getContentPane().add(tabbedPane);
 
-		tabEGov = new JPanel();
+		frmFrame.setMinimumSize(new Dimension(295, 320));
+
+		JPanel tabEGov = new JPanel();
 		tabbedPane.addTab("eGov", null, tabEGov, null);
 		tabEGov.setLayout(new BorderLayout(0, 0));
 
@@ -244,7 +365,7 @@ public class SPMain {
 		spEGov.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
 		tabEGov.add(spEGov, BorderLayout.CENTER);
 
-		lstEGov = new JList();
+		JList lstEGov = new JList();
 		lstEGov.setModel(new AbstractListModel() {
 			public int getSize() {
 				return valuesEGov.length;
@@ -269,14 +390,14 @@ public class SPMain {
 		btnEGov.setAlignmentX(Component.CENTER_ALIGNMENT);
 		tabEGov.add(btnEGov, BorderLayout.SOUTH);
 
-		tabBank = new JPanel();
+		JPanel tabBank = new JPanel();
 		tabbedPane.addTab("Bank", null, tabBank, null);
 		tabBank.setLayout(new BorderLayout(0, 0));
 
 		JScrollPane spBank = new JScrollPane();
 		tabBank.add(spBank);
 
-		lstBank = new JList();
+		JList lstBank = new JList();
 		lstBank.setModel(new AbstractListModel() {
 			public int getSize() {
 				return valuesBank.length;
@@ -299,14 +420,14 @@ public class SPMain {
 		btnBank.setAlignmentX(0.5f);
 		tabBank.add(btnBank, BorderLayout.SOUTH);
 
-		tabExtra = new JPanel();
+		JPanel tabExtra = new JPanel();
 		tabbedPane.addTab("Clinic", null, tabExtra, null);
 		tabExtra.setLayout(new BorderLayout(0, 0));
 
 		JScrollPane spExtra = new JScrollPane();
 		tabExtra.add(spExtra);
 
-		lstExtra = new JList();
+		JList lstExtra = new JList();
 		lstExtra.setModel(new AbstractListModel() {
 			public int getSize() {
 				return valuesExtra.length;
@@ -329,7 +450,7 @@ public class SPMain {
 		});
 		tabExtra.add(btnExtra, BorderLayout.SOUTH);
 
-		tabDefault = new JPanel();
+		JPanel tabDefault = new JPanel();
 		tabDefault.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
 		tabbedPane.addTab("Default", null, tabDefault, null);
 		tabDefault.setLayout(new BorderLayout(0, 0));
@@ -337,7 +458,7 @@ public class SPMain {
 		JScrollPane spDefault = new JScrollPane();
 		tabDefault.add(spDefault, BorderLayout.CENTER);
 
-		lstDefault = new JList();
+		JList lstDefault = new JList();
 		lstDefault.setModel(new AbstractListModel() {
 			public int getSize() {
 				return valuesDefault.length;
@@ -362,16 +483,11 @@ public class SPMain {
 	}
 
 	private void getWaitingPanel() {
+		cleanWindow();
 		frmFrame.setTitle("Waiting");
-		if (tabEGov != null) {
-			tabbedPane.removeTabAt(tabbedPane.indexOfComponent(tabBank));
-			tabbedPane.removeTabAt(tabbedPane.indexOfComponent(tabDefault));
-			tabbedPane.removeTabAt(tabbedPane.indexOfComponent(tabEGov));
-			tabbedPane.removeTabAt(tabbedPane.indexOfComponent(tabExtra));
-		}
 
-		tabWaiting = new JPanel();
-		tabbedPane.addTab("Waiting", null, tabWaiting, null);
+		JPanel tabWaiting = new JPanel();
+		frmFrame.getContentPane().add(tabWaiting);
 
 		JLabel lblWaiting = new JLabel("Please insert card...");
 		tabWaiting.add(lblWaiting);
@@ -380,9 +496,179 @@ public class SPMain {
 		lblWaiting.setHorizontalAlignment(SwingConstants.CENTER);
 	}
 
+	private void getResultsPanel() {
+		cleanWindow();
+		frmFrame.setTitle("Results");
+		frmFrame.getContentPane().setLayout(new BorderLayout(0, 0));
+		frmFrame.setMinimumSize(new Dimension(300, 640));
+
+		JPanel panel = new JPanel();
+		frmFrame.getContentPane().add(panel);
+
+		JLabel label = new JLabel("Service:");
+		label.setHorizontalAlignment(SwingConstants.LEFT);
+		label.setFont(new Font("Tahoma", Font.BOLD, 13));
+
+		JLabel label_1 = new JLabel("Nym:");
+		label_1.setHorizontalAlignment(SwingConstants.LEFT);
+
+		lblServiceName = new JLabel("NAME");
+		lblServiceName.setHorizontalAlignment(SwingConstants.LEFT);
+		lblServiceName.setFont(new Font("Tahoma", Font.BOLD, 13));
+
+		txtNym = new JTextField();
+		txtNym.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
+		txtNym.setHorizontalAlignment(SwingConstants.LEFT);
+		txtNym.setEditable(false);
+		txtNym.setColumns(10);
+
+		JLabel label_3 = new JLabel("Name:");
+
+		txtName = new JTextField();
+		txtName.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
+		txtName.setEditable(false);
+		txtName.setColumns(10);
+
+		JLabel label_4 = new JLabel("Address:");
+
+		txtAddress = new JTextField();
+		txtAddress.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
+		txtAddress.setEditable(false);
+		txtAddress.setColumns(10);
+
+		JLabel label_5 = new JLabel("Signature:");
+
+		JLabel label_6 = new JLabel("Birth date:");
+
+		txtBirthDate = new JTextField();
+		txtBirthDate.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
+		txtBirthDate.setEditable(false);
+		txtBirthDate.setColumns(10);
+
+		JLabel label_7 = new JLabel("Age:");
+
+		txtAge = new JTextField();
+		txtAge.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
+		txtAge.setEditable(false);
+		txtAge.setColumns(10);
+
+		JLabel lblGender = new JLabel("Gender:");
+
+		JLabel label_9 = new JLabel("Picture:");
+
+		JLabel lblPassportNr = new JLabel("Passport nr.:");
+
+		txtGender = new JTextField();
+		txtGender.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
+		txtGender.setEditable(false);
+		txtGender.setColumns(10);
+
+		txtPassportNr = new JTextField();
+		txtPassportNr.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
+		txtPassportNr.setEditable(false);
+		txtPassportNr.setColumns(10);
+
+		lblSignature = new JLabel("");
+		lblSignature.setBorder(new BevelBorder(BevelBorder.LOWERED, null, null, null, null));
+		lblSignature.setIcon(new ImageIcon(this.getClass().getResource("/noIMage.jpg")));
+
+		lblPicture = new JLabel("");
+		lblPicture.setBorder(new BevelBorder(BevelBorder.LOWERED, null, null, null, null));
+		lblPicture.setIcon(new ImageIcon(this.getClass().getResource("/noIMage.jpg")));
+
+		GroupLayout gl_panel = new GroupLayout(panel);
+		gl_panel.setHorizontalGroup(
+				gl_panel.createParallelGroup(Alignment.LEADING)
+						.addGroup(gl_panel.createSequentialGroup().addContainerGap().addGroup(gl_panel
+								.createParallelGroup(Alignment.LEADING).addGroup(gl_panel.createSequentialGroup()
+										.addComponent(label).addPreferredGap(ComponentPlacement.UNRELATED).addComponent(
+												lblServiceName, GroupLayout.PREFERRED_SIZE, 53, GroupLayout.PREFERRED_SIZE))
+								.addGroup(gl_panel.createSequentialGroup()
+										.addGroup(
+												gl_panel.createParallelGroup(Alignment.LEADING)
+														.addComponent(label_1).addComponent(label_5).addComponent(
+																label_4)
+														.addComponent(label_3))
+										.addGap(42)
+										.addGroup(gl_panel.createParallelGroup(Alignment.LEADING)
+												.addComponent(lblSignature, GroupLayout.PREFERRED_SIZE, 150,
+														GroupLayout.PREFERRED_SIZE)
+												.addGroup(gl_panel.createParallelGroup(Alignment.LEADING)
+														.addComponent(txtAddress).addComponent(txtName)
+														.addComponent(txtNym, GroupLayout.DEFAULT_SIZE, 307,
+																Short.MAX_VALUE))))
+								.addGroup(gl_panel.createSequentialGroup()
+										.addGroup(gl_panel.createParallelGroup(Alignment.LEADING)
+												.addComponent(lblGender).addComponent(label_7).addComponent(label_6))
+										.addGap(41)
+										.addGroup(gl_panel.createParallelGroup(Alignment.LEADING)
+												.addGroup(gl_panel
+														.createSequentialGroup().addPreferredGap(
+																ComponentPlacement.RELATED)
+														.addGroup(gl_panel.createParallelGroup(Alignment.LEADING)
+																.addComponent(lblPicture, GroupLayout.PREFERRED_SIZE,
+																		150, GroupLayout.PREFERRED_SIZE)
+																.addComponent(txtPassportNr, GroupLayout.DEFAULT_SIZE,
+																		307, Short.MAX_VALUE)
+																.addComponent(txtGender, GroupLayout.DEFAULT_SIZE, 307,
+																		Short.MAX_VALUE)))
+												.addComponent(txtAge, GroupLayout.DEFAULT_SIZE, 307, Short.MAX_VALUE)
+												.addComponent(txtBirthDate, GroupLayout.DEFAULT_SIZE, 307,
+														Short.MAX_VALUE)))
+								.addComponent(label_9).addComponent(lblPassportNr)).addContainerGap()));
+		gl_panel.setVerticalGroup(gl_panel.createParallelGroup(Alignment.LEADING).addGroup(gl_panel
+				.createSequentialGroup().addGap(5)
+				.addGroup(gl_panel.createParallelGroup(Alignment.BASELINE).addComponent(label).addComponent(lblServiceName,
+						GroupLayout.PREFERRED_SIZE, 16, GroupLayout.PREFERRED_SIZE))
+				.addGap(18)
+				.addGroup(gl_panel.createParallelGroup(Alignment.LEADING).addComponent(label_1)
+						.addGroup(gl_panel.createSequentialGroup()
+								.addComponent(txtNym, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
+										GroupLayout.PREFERRED_SIZE)
+								.addPreferredGap(ComponentPlacement.UNRELATED)
+								.addGroup(gl_panel.createParallelGroup(Alignment.BASELINE)
+										.addComponent(txtName, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
+												GroupLayout.PREFERRED_SIZE)
+										.addComponent(label_3))
+								.addPreferredGap(ComponentPlacement.UNRELATED)
+								.addGroup(gl_panel.createParallelGroup(Alignment.BASELINE)
+										.addComponent(txtAddress, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
+												GroupLayout.PREFERRED_SIZE)
+										.addComponent(label_4))
+								.addPreferredGap(ComponentPlacement.UNRELATED)
+								.addGroup(gl_panel.createParallelGroup(Alignment.LEADING)
+										.addComponent(lblSignature, GroupLayout.PREFERRED_SIZE, 150,
+												GroupLayout.PREFERRED_SIZE)
+										.addComponent(label_5))))
+				.addGap(18)
+				.addGroup(gl_panel.createParallelGroup(Alignment.BASELINE)
+						.addComponent(txtBirthDate, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
+								GroupLayout.PREFERRED_SIZE)
+						.addComponent(label_6))
+				.addPreferredGap(ComponentPlacement.UNRELATED)
+				.addGroup(gl_panel.createParallelGroup(Alignment.BASELINE)
+						.addComponent(txtAge, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
+								GroupLayout.PREFERRED_SIZE)
+						.addComponent(label_7))
+				.addPreferredGap(ComponentPlacement.UNRELATED)
+				.addGroup(gl_panel.createParallelGroup(Alignment.BASELINE)
+						.addComponent(txtGender, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
+								GroupLayout.PREFERRED_SIZE)
+						.addComponent(lblGender))
+				.addPreferredGap(ComponentPlacement.UNRELATED)
+				.addGroup(gl_panel.createParallelGroup(Alignment.BASELINE).addComponent(label_9)
+						.addComponent(lblPicture, GroupLayout.PREFERRED_SIZE, 150, GroupLayout.PREFERRED_SIZE))
+				.addGap(18)
+				.addGroup(gl_panel.createParallelGroup(Alignment.BASELINE).addComponent(lblPassportNr).addComponent(
+						txtPassportNr, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
+						GroupLayout.PREFERRED_SIZE))
+				.addContainerGap(21, Short.MAX_VALUE)));
+		panel.setLayout(gl_panel);
+	}
+
 	private void selectService(String serviceName) {
 		System.out.println("Chosen service: " + serviceName);
-		
+
 		// find keystore
 		String keyStorePath = Paths.get(System.getProperty("user.dir")).getParent().toString() + File.separator
 				+ "Certificates" + File.separator + "Services" + File.separator;
@@ -399,29 +685,29 @@ public class SPMain {
 
 			// remember private key during session
 			pr = (PrivateKey) ks.getKey(CertificateName, ServicePassword.toCharArray());
-			
+
 			// get certificate
 			chosenCert = (X509Certificate) ks.getCertificate(CertificateName);
-			
+
 			// send certificate
 			out.writeObject(new SPmessage(SPmessageType.SP_CERTIFICATE, chosenCert));
 			System.out.println("Certificate sent");
 
-			// show waiting again
-			getWaitingPanel();
+			// show results
+			getResultsPanel();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
-	
+
 	// part of STEP 2, generating a responce for the challenge
 	@SuppressWarnings("unchecked")
-	private byte[] generateChallengeResponse(SPmessage challengeMessage){
+	private byte[] generateChallengeResponse(SPmessage challengeMessage) {
 		// get the Ekey & Emsg from the SPmessage
 		Pair<byte[], byte[]> data = (Pair<byte[], byte[]>) challengeMessage.getData();
 		byte[] Ekey = data.getKey();
 		byte[] Emsg = data.getValue();
-		
+
 		byte[] responce = null;
 		try {
 			// (9) get symmetric key
@@ -441,16 +727,16 @@ public class SPMain {
 			String msgName = msg.getValue();
 			String expectedName = chosenCert.getSubjectDN().getName();
 			if (!msgName.equals(expectedName))
-		        throw new Exception("Received '" + msgName + "', expected '" + expectedName + "'");
-			
+				throw new Exception("Received '" + msgName + "', expected '" + expectedName + "'");
+
 			// (12) incr challenge & encrypt with symmetric key
 			cph = Cipher.getInstance(algSym);
 			cph.init(Cipher.ENCRYPT_MODE, symKey);
 			responce = cph.doFinal(SPtools.convertToBytes(msg.getKey() + 1));
 		} catch (Exception e) {
 			e.printStackTrace();
-		} 
-		
-		return responce;		
+		}
+
+		return responce;
 	}
 }

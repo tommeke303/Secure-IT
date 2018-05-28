@@ -5,6 +5,7 @@ package be.msec.serviceProvider;
  * SP_CERTIFICATE: The certificate of the service provider is sent
  * AUTH_SP: Authentication message to authenticate the SP
  * AUTH_CARD: Authentication message to authenticate the javacard
+ * DATA_****: Data was sentS
  * 
  * @author Pedro
  *
@@ -13,5 +14,14 @@ public enum SPmessageType{
 	CLOSE,
 	SP_CERTIFICATE,
 	AUTH_SP,
-	AUTH_CARD
+	AUTH_CARD,
+	DATA_NYM,
+	DATA_NAME,
+	DATA_ADDRESS,
+	DATA_SIGNATURE,
+	DATA_BIRTHDATE,
+	DATA_AGE,
+	DATA_GENDER,
+	DATA_PICTURE,
+	DATA_PASSPORT
 }

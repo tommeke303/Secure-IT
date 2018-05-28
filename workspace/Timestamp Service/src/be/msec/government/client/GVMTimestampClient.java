@@ -1,28 +1,21 @@
 package be.msec.government.client;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
-import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.nio.file.Paths;
 import java.security.KeyStore;
-import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Security;
+import java.security.Signature;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Arrays;
-
-import javax.crypto.Cipher;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
 import com.sun.net.ssl.internal.ssl.Provider;
+
+import be.msec.serviceProvider.tools.SPtools;
+import javafx.util.Pair;
 
 public class GVMTimestampClient {
 	// network address
@@ -43,7 +36,8 @@ public class GVMTimestampClient {
 	 * @throws Exception If something went wrong.
 	 */
 	public Timestamp getTimestampDecrypted() throws Exception {
-		byte[] Raw = getTimestampRaw();
+		// (6) & (9)
+		Pair<byte[], Timestamp> raw = getTimestampRaw();
 
 		// get certificate
 		KeyStore keyStore = KeyStore.getInstance("JKS");
@@ -51,28 +45,16 @@ public class GVMTimestampClient {
 		keyStore.load(fis, ClientKeyPassword.toCharArray());
 		fis.close();
 
-		PrivateKey pr = (PrivateKey) keyStore.getKey("government", ClientKeyPassword.toCharArray());
 		PublicKey pk = keyStore.getCertificate(CertificateName).getPublicKey();
 		
-		/*
-		X509Certificate a = (X509Certificate) keyStore.getCertificate(CertificateName);
-		System.out.println("domain: " + a.getSubjectDN());
-		*/
-		
-		// verify
-		keyStore.getCertificate(CertificateName).verify(keyStore.getCertificate("ca").getPublicKey());
-		
-		String alg = "RSA/ECB/PKCS1Padding";
-		Cipher c;
+		// prepare verification
+		Signature sig = Signature.getInstance("SHA1WithRSA");
+		sig.initVerify(pk);
+        sig.update(SPtools.convertToBytes(raw.getValue()));
+        
+        sig.verify(raw.getKey());
 
-		// decrypt
-		c = Cipher.getInstance(alg);
-		c.init(Cipher.DECRYPT_MODE, pk);
-		byte[] decrypted = c.doFinal(Raw);
-		String asString = new String(decrypted);
-		Timestamp theTime = new Timestamp(new Long(asString));
-
-		return theTime;
+		return raw.getValue();
 	}
 
 	/**
@@ -81,7 +63,8 @@ public class GVMTimestampClient {
 	 * @return The timestamp from the government, encrypted with the private key of the government
 	 * @throws Exception If something went wrong.
 	 */
-	public byte[] getTimestampRaw() throws Exception {
+	@SuppressWarnings("unchecked")
+	public Pair<byte[], Timestamp> getTimestampRaw() throws Exception {
 		// set security properties
 		Security.addProvider(new Provider());
 		System.setProperty("javax.net.ssl.trustStore", ClientKeyStore);
@@ -91,14 +74,18 @@ public class GVMTimestampClient {
 		// System.setProperty("javax.net.debug", "all");
 
 		SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+		
+		// (6)
 		SSLSocket socket = (SSLSocket) factory.createSocket(Address, Port);
 
-		// OLD
+		// (9)
 		ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
-		byte[] result = (byte[]) in.readObject();
+        Pair<byte[], Timestamp> result = (Pair<byte[], Timestamp>) in.readObject();
 		
 		// close connections
 		in.close();
+		
+
 		
 		return result;
 	}

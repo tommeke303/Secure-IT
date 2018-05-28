@@ -1,0 +1,117 @@
+package be.msec.serviceProvider.client;
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.security.cert.X509Certificate;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+
+import be.msec.serviceProvider.SPmessage;
+import be.msec.serviceProvider.SPmessageType;
+import javafx.util.Pair;
+
+public class SPClient {
+	// network address
+	private String Address = "localhost";
+	private int Port = 1251;
+
+	private ObjectOutputStream out;
+	private ObjectInputStream in;
+	private X509Certificate cert;
+	
+	public SPClient() throws Exception {
+		// initialize connection
+		SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+		SSLSocket socket = (SSLSocket) factory.createSocket(Address, Port);
+		out = new ObjectOutputStream(socket.getOutputStream());
+		in = new ObjectInputStream(socket.getInputStream());
+		
+		System.out.println("Connected to service provider");
+
+		// get service data when available
+		SPmessage msg = (SPmessage) in.readObject();
+		cert = (X509Certificate) msg.getData();
+		
+		System.out.println("Certificate received");
+		System.out.println("Certificate details: " + cert.getSubjectDN());
+	}
+	
+	/**
+	 * close connection
+	 */
+	public void close(){
+		try {
+			in.close();
+			out.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	public X509Certificate getServiceCertificate(){
+		return this.cert;
+	}
+	
+	/**
+	 * sending a challenge to the SP - step 2 (8) & (13)
+	 * @param Ekey
+	 * @param Emsg
+	 * @return Returns the responce, received from the SP.
+	 */
+	public byte[] sendChallenge(byte[] Ekey, byte[] Emsg){
+		byte[] res = null;
+		
+		try {
+			// send challenge & expect responce
+			out.writeObject(new SPmessage(SPmessageType.AUTH_SP, new Pair<byte[], byte[]>(Ekey, Emsg)));
+			SPmessage responce = (SPmessage)in.readObject();
+			
+			res = (byte[]) responce.getData();
+			
+			if (res == null)
+				throw new Exception("Something went wrong on the SP side");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return res;
+	}
+	
+	public byte[] receiveChallenge(){
+		byte[] res = null;
+		
+		try {
+			// wait for response from SP
+			SPmessage input = (SPmessage) in.readObject();
+			
+			// check message type
+			if (input.getMessageType() != SPmessageType.AUTH_CARD)
+				throw new Exception("Expected an 'AUTH_CARD' message from SP, received: " + input.getMessageType());
+				
+			res = (byte[]) input.getData();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return res;
+	}
+	
+	public void sendChallengeResponce(byte[] response){
+		try {
+			out.writeObject(new SPmessage(SPmessageType.AUTH_CARD, response));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public SPmessage awaitQuery() throws ClassNotFoundException, IOException{
+		try {
+			return (SPmessage) in.readObject();			
+		} catch (Exception e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+}

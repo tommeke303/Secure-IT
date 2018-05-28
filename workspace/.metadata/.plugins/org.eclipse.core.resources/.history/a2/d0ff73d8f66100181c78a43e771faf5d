@@ -1,0 +1,94 @@
+package be.msec.client;
+
+import java.awt.EventQueue;
+
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import java.awt.BorderLayout;
+import javax.swing.JLabel;
+import javax.swing.SwingConstants;
+import java.awt.Font;
+import javax.swing.JButton;
+import javax.swing.JTextField;
+import javax.swing.GroupLayout;
+import javax.swing.GroupLayout.Alignment;
+import javax.swing.LayoutStyle.ComponentPlacement;
+import javax.swing.JPasswordField;
+import java.awt.Window.Type;
+
+public class PinInput {
+
+	private JFrame frmPinCode;
+	private JPasswordField txtPinCode;
+
+	/**
+	 * Launch the application.
+	 */
+	public static void main(String[] args) {
+		EventQueue.invokeLater(new Runnable() {
+			public void run() {
+				try {
+					PinInput window = new PinInput();
+					window.frmPinCode.setVisible(true);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
+	}
+
+	/**
+	 * Create the application.
+	 */
+	public PinInput() {
+		initialize();
+	}
+
+	/**
+	 * Initialize the contents of the frame.
+	 */
+	private void initialize() {
+		frmPinCode = new JFrame();
+		frmPinCode.setType(Type.UTILITY);
+		frmPinCode.setTitle("Pin code");
+		frmPinCode.setBounds(100, 100, 176, 136);
+		frmPinCode.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frmPinCode.getContentPane().setLayout(new BorderLayout(0, 0));
+		
+		JPanel panel = new JPanel();
+		frmPinCode.getContentPane().add(panel);
+		
+		JButton btnOk = new JButton("OK");
+		
+		txtPinCode = new JPasswordField();
+		txtPinCode.setToolTipText("");
+		
+		JLabel lblEnterPinCode = new JLabel("Enter pin code:");
+		lblEnterPinCode.setFont(new Font("Tahoma", Font.BOLD, 18));
+		GroupLayout gl_panel = new GroupLayout(panel);
+		gl_panel.setHorizontalGroup(
+			gl_panel.createParallelGroup(Alignment.LEADING)
+				.addGroup(gl_panel.createSequentialGroup()
+					.addContainerGap()
+					.addGroup(gl_panel.createParallelGroup(Alignment.LEADING)
+						.addGroup(gl_panel.createSequentialGroup()
+							.addComponent(txtPinCode, GroupLayout.PREFERRED_SIZE, 74, GroupLayout.PREFERRED_SIZE)
+							.addPreferredGap(ComponentPlacement.RELATED)
+							.addComponent(btnOk))
+						.addComponent(lblEnterPinCode))
+					.addContainerGap(106, Short.MAX_VALUE))
+		);
+		gl_panel.setVerticalGroup(
+			gl_panel.createParallelGroup(Alignment.LEADING)
+				.addGroup(gl_panel.createSequentialGroup()
+					.addGap(16)
+					.addComponent(lblEnterPinCode)
+					.addPreferredGap(ComponentPlacement.UNRELATED)
+					.addGroup(gl_panel.createParallelGroup(Alignment.BASELINE)
+						.addComponent(txtPinCode, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+						.addComponent(btnOk, GroupLayout.PREFERRED_SIZE, 21, GroupLayout.PREFERRED_SIZE))
+					.addGap(31))
+		);
+		panel.setLayout(gl_panel);
+	}
+}

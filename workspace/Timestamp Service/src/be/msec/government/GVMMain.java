@@ -8,12 +8,15 @@ import java.nio.file.Paths;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.Security;
+import java.security.Signature;
 
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
-import javax.crypto.*;
 import java.sql.Timestamp;
-import com.sun.net.ssl.internal.ssl.*;;
+import com.sun.net.ssl.internal.ssl.*;
+
+import be.msec.serviceProvider.tools.SPtools;
+import javafx.util.Pair;;
 
 public class GVMMain {
 
@@ -52,10 +55,6 @@ public class GVMMain {
 		// get key
 		PrivateKey pr = (PrivateKey) keyStore.getKey(CertificateName, governmentKeyPassword.toCharArray());
 
-		// algorithm
-		String alg = "RSA/ECB/PKCS1Padding";
-		Cipher c;
-
 		// feedback
 		System.out.println("Timestamp service started and ready for accepting connections");
 
@@ -65,16 +64,22 @@ public class GVMMain {
 			ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
 			System.out.println("\nNew connection accepted");
  
+			// (7)
 			Timestamp timestamp = new Timestamp(System.currentTimeMillis());
 			System.out.println("Original timestamp: " + timestamp);
+			
+			// (8)
+			// make signature
+			byte[] data = SPtools.convertToBytes(timestamp);
+	        Signature sig = Signature.getInstance("SHA1WithRSA");
+	        sig.initSign(pr);
+	        sig.update(data);
+	        byte[] signatureBytes = sig.sign();
 
-			// encrypt
-			c = Cipher.getInstance(alg);
-			c.init(Cipher.ENCRYPT_MODE, pr);
-			byte[] encrypted = c.doFinal((timestamp.getTime() + "").getBytes());
-
+	        Pair<byte[], Timestamp> toSend = new Pair<byte[], Timestamp>(signatureBytes, timestamp);
+	        
 			// send encrypted data
-			out.writeObject(encrypted);
+			out.writeObject(toSend);
 			System.out.println("Timestamp sent");
 
 			out.close();
