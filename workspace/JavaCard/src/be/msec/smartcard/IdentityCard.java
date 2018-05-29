@@ -2,11 +2,17 @@ package be.msec.smartcard;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
-import java.security.interfaces.RSAPrivateKey;
+import java.nio.file.Paths;
+
+
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -17,8 +23,17 @@ import javacard.framework.Applet;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.OwnerPIN;
-import javacard.security.KeyBuilder;
-import javacard.security.Signature;
+
+import javafx.util.Pair;
+
+import java.security.InvalidKeyException;
+import java.security.KeyStore;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.Security;
+import java.security.Signature;
+import java.security.SignatureException;
+import java.security.PublicKey;
 
 public class IdentityCard extends Applet {
 	private final static byte IDENTITY_CARD_CLA = (byte) 0x80;
@@ -26,7 +41,8 @@ public class IdentityCard extends Applet {
 	private static final byte VALIDATE_PIN_INS = 0x22;
 	private static final byte HELLO = 0x24;
 	private static final byte GET_SERIAL_INS = 0x26;
-
+	private static final byte SIG_TIME = 0x29;
+	
 	private final static byte PIN_TRY_LIMIT = (byte) 0x03;
 	private final static byte PIN_SIZE = (byte) 0x04;
 
@@ -103,8 +119,10 @@ public class IdentityCard extends Applet {
 	private byte[] serial = new byte[] { (byte) 0x4A, (byte) 0x61, (byte) 0x6e };
 	private byte[] name = new byte[] { 0x4A, 0x61, 0x6E, 0x20, 0x56, 0x6F, 0x73, 0x73, 0x61, 0x65, 0x72, 0x74 };
 	private OwnerPIN pin;
-	private byte[] lastValidationTime;
-
+	private byte[] lastValidationTimeByteArray;
+	private byte[] pkByteArray;
+	private byte[] prByteArray;
+	
 	/*
 	// make private key?
 	short offset = 0;
@@ -131,7 +149,35 @@ public class IdentityCard extends Applet {
 		/*
 		 * Initialising the lastValidationTime to the time of creation
 		 */
-		lastValidationTime = convertToBytes(new Timestamp(System.currentTimeMillis()));
+		lastValidationTimeByteArray = convertToBytes(new Timestamp(System.currentTimeMillis()));
+		try {
+			// get public key, dees is enkel voor in de client.java, normaal
+			// heeft de javacard de public key van government al opgeslagen
+			/* String keyStorePath = Paths.get(System.getProperty("user.dir")).getParent().toString() + File.separator
+					+ "Certificates" + File.separator; */
+			
+			String keyStorePath = "/Users/Thomas/eclipse-workspace/Secure-IT/workspace/Certificates/";
+			// /Users/Thomas/eclipse-workspace/Secure-IT/workspace/Certificates/
+			
+			String ClientKeyStore = keyStorePath + "common.jks";
+			String ClientKeyPassword = "password";
+			String CertificateName = "government (ca)";
+			KeyStore keyStore = KeyStore.getInstance("JKS");
+			FileInputStream fis = new FileInputStream(ClientKeyStore);
+			keyStore.load(fis, ClientKeyPassword.toCharArray());	
+			fis.close();
+			PublicKey pk = keyStore.getCertificate(CertificateName).getPublicKey();
+			PrivateKey pr = (PrivateKey) keyStore.getKey("common", ClientKeyPassword.toCharArray());
+			
+			pkByteArray = convertToBytes(pk);
+			prByteArray = convertToBytes(pr);
+			
+		}catch(Exception ex) {
+			System.out.println(ex);
+		}
+		
+		
+		
 		/*
 		 * This method registers the applet with the JCRE on the card.
 		 */
@@ -177,8 +223,8 @@ public class IdentityCard extends Applet {
 		case VALIDATE_PIN_INS:
 			validatePIN(apdu);
 			break;
-		case GET_SERIAL_INS:
-			getSerial(apdu);
+		case SIG_TIME:
+			sign(apdu);
 			break;
 		case HELLO:
 			reqRevalidation(apdu);
@@ -238,26 +284,7 @@ public class IdentityCard extends Applet {
 			ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
 	}
 
-	/*
-	 * This method checks whether the user is authenticated and sends the serial
-	 * number.
-	 */
-	private void getSerial(APDU apdu) {
-		// If the pin is not validated, a response APDU with the
-		// 'SW_PIN_VERIFICATION_REQUIRED' status word is transmitted.
-		if (!pin.isValidated())
-			ISOException.throwIt(SW_PIN_VERIFICATION_REQUIRED);
-		else {
-			// This sequence of three methods sends the data contained in
-			// 'serial' with offset '0' and length 'serial.length'
-			// to the host application.
-			apdu.setOutgoing();
-			apdu.setOutgoingLength((short) serial.length);
-			apdu.sendBytesLong(serial, (short) 0, (short) serial.length);
-		}
-	}
-
-private byte[] read_Data(APDU apdu) {
+	private byte[] read_Data(APDU apdu) {
 		
 		byte buffer[] = apdu.getBuffer();
 		short length = (short) buffer[ISO7816.OFFSET_LC];
@@ -277,6 +304,58 @@ private byte[] read_Data(APDU apdu) {
 		
 		return temp;
 	}
+	
+	private void sign(APDU apdu) {
+		// If the pin is not validated, a response APDU with the
+		// 'SW_PIN_VERIFICATION_REQUIRED' status word is transmitted.
+		if (!pin.isValidated())
+			ISOException.throwIt(SW_PIN_VERIFICATION_REQUIRED);
+		else {
+			Pair<byte[], Timestamp> encryptedTimestamp = (Pair<byte[], Timestamp>)convertToObject(read_Data(apdu));
+			
+			// (10) verify timestamp
+			PublicKey pk = (PublicKey) convertToObject(pkByteArray);
+			Signature sig = null;
+			boolean verified = false;
+			try {
+				sig = Signature.getInstance("SHA1WithRSA");
+				sig.initVerify(pk);
+				sig.update(convertToBytes(encryptedTimestamp.getValue()));
+				verified = sig.verify(encryptedTimestamp.getKey());
+			} catch (Exception e1) {
+				// TODO Auto-generated catch block
+				System.out.println(e1);
+			}
+			
+			
+			
+			if (!verified) {
+				ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+			}
+
+			// (11) check if new time is actually new
+			Timestamp lastValidationTime = null;
+			
+			try {
+				lastValidationTime = convertBytesToTimestamp(lastValidationTimeByteArray);
+			}
+			catch(Exception e) {
+				System.out.println(e);
+			}
+			
+			if (lastValidationTime.getTime() >= encryptedTimestamp.getValue().getTime()) {
+				ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+			}
+				
+
+			// (12) set new time in memory
+			System.out.println("before = " + lastValidationTime.getTime());
+			lastValidationTime = encryptedTimestamp.getValue();
+			System.out.println("after = " + lastValidationTime.getTime());
+			lastValidationTimeByteArray = convertToBytes(lastValidationTime);
+			
+		}
+	}
 
 	private void reqRevalidation(APDU apdu) {
 		// If the pin is not validated, a response APDU with the
@@ -288,19 +367,16 @@ private byte[] read_Data(APDU apdu) {
 			Calendar cal = Calendar.getInstance();
 			short res;
 			
-			SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSS");
-			Date parsedValidDate = null;
-			Date parsedCurrentDate = null;
+			Timestamp validTime = null;
+			Timestamp currentTime = null;
+			
 			try {
-				parsedValidDate = dateFormat.parse(String.valueOf(convertToObject(lastValidationTime)));
-				parsedCurrentDate = dateFormat.parse(String.valueOf(convertToObject(read_Data(apdu))));
+				validTime = convertBytesToTimestamp(lastValidationTimeByteArray);
+				currentTime = convertBytesToTimestamp(read_Data(apdu));
 			}
 			catch(Exception e) {
 				System.out.println(e);
 			}
-			
-			Timestamp validTime = new Timestamp(parsedValidDate.getTime());
-			Timestamp currentTime = new Timestamp(parsedCurrentDate.getTime());
 			
 			cal.setTimeInMillis(validTime.getTime());
 			cal.add(Calendar.HOUR, 24);
@@ -310,6 +386,19 @@ private byte[] read_Data(APDU apdu) {
 				ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 			}
 		}
+	}
+	
+	private static Timestamp convertBytesToTimestamp(byte[] timeByteArray) {
+		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSS");
+		Date parsedDate = null;
+		try {
+			parsedDate = dateFormat.parse(String.valueOf(convertToObject(timeByteArray)));
+		}
+		catch(Exception e) {
+			System.out.println(e);
+		}
+		
+		return new Timestamp(parsedDate.getTime());
 	}
 	
 	// encode something to bytes

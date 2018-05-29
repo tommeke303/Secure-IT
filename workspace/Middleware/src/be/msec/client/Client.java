@@ -10,7 +10,6 @@ import be.msec.serviceProvider.SPmessageType;
 import be.msec.serviceProvider.client.SPClient;
 import be.msec.serviceProvider.tools.SPtools;
 import javafx.util.Pair;
-import sun.misc.Resource;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -47,6 +46,8 @@ public class Client {
 	private static final byte VALIDATE_PIN_INS = 0x22;
 	private final static short SW_VERIFICATION_FAILED = 0x6300;
 	private final static short SW_PIN_VERIFICATION_REQUIRED = 0x6301;
+	private static final short SW_CONDITIONS_NOT_SATISFIED = 0x6985;
+	private static final short SW_DATA_INVALID = 0x6984;
 	private static final byte HELLO = 0x24;
 	private static final byte SIG_TIME = 0x29;
 	private static String algSym;
@@ -162,45 +163,28 @@ public class Client {
 																// purpose)
 			Boolean reqRevalidation = lastValidationTime.getTime() < (timestamp.getTime() - threshold);
 
-			// TODO: (4): receive 'reqValidation' from card
 			 */
 			// (5), set new time when revalidation is required
+			
+			
+			
 			if (reqRevalidation) {
 				// (6)->(9)
 				Pair<byte[], Timestamp> encryptedTimestamp = new GVMTimestampClient().getTimestampRaw();
 				
 				byte[] encryptedTimestampByteArray = convertToBytes(encryptedTimestamp);
 				
-				// TODO: (9)->(12) in javacard
+				// (9) 
 				a = new CommandAPDU(IDENTITY_CARD_CLA, SIG_TIME, 0x00, 0x00, encryptedTimestampByteArray);
 				r = c.transmit(a);
 				
-				// get public key, dees is enkel voor in de client.java, normaal
-				// heeft de javacard de public key van government al opgeslagen
-				String keyStorePath = Paths.get(System.getProperty("user.dir")).getParent().toString() + File.separator
-						+ "Certificates" + File.separator;
-				String ClientKeyStore = keyStorePath + "common.jks";
-				String ClientKeyPassword = "password";
-				String CertificateName = "government (ca)";
-				KeyStore keyStore = KeyStore.getInstance("JKS");
-				FileInputStream fis = new FileInputStream(ClientKeyStore);
-				keyStore.load(fis, ClientKeyPassword.toCharArray());
-				fis.close();
-				PublicKey pk = keyStore.getCertificate(CertificateName).getPublicKey();
-
-				// (10) verify timestamp
-				Signature sig = Signature.getInstance("SHA1WithRSA");
-				sig.initVerify(pk);
-				sig.update(SPtools.convertToBytes(encryptedTimestamp.getValue()));
-				if (!sig.verify(encryptedTimestamp.getKey()))
-					throw new Exception("Government signature was invalid!");
-
-				// (11) check if new time is actually new
-				if (lastValidationTime.getTime() >= encryptedTimestamp.getValue().getTime())
-					throw new Exception("New time is smaller (or equal) to old time, something went wrong!");
-
-				// (12) set new time in memory
-				lastValidationTime = encryptedTimestamp.getValue();
+				if (r.getSW() == SW_DATA_INVALID) {
+					System.out.println("Failed");
+				}
+				else {
+					System.out.println("Succeeded");
+				}
+				
 			}
 
 			/**
