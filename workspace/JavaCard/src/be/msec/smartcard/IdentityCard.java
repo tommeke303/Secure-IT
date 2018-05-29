@@ -17,6 +17,11 @@ import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Random;
+
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 
 import javacard.framework.APDU;
 import javacard.framework.Applet;
@@ -33,6 +38,7 @@ import java.security.PrivateKey;
 import java.security.Security;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.security.cert.X509Certificate;
 import java.security.PublicKey;
 
 public class IdentityCard extends Applet {
@@ -40,8 +46,9 @@ public class IdentityCard extends Applet {
 
 	private static final byte VALIDATE_PIN_INS = 0x22;
 	private static final byte HELLO = 0x24;
-	private static final byte GET_SERIAL_INS = 0x26;
-	private static final byte SIG_TIME = 0x29;
+	private static final byte SIG_TIME = 0x26;
+	private static final byte SEND_BIG_DATA = 0x30;
+	private static final byte AUTHENTICATESP = 0x34;
 	
 	private final static byte PIN_TRY_LIMIT = (byte) 0x03;
 	private final static byte PIN_SIZE = (byte) 0x04;
@@ -122,6 +129,9 @@ public class IdentityCard extends Applet {
 	private byte[] lastValidationTimeByteArray;
 	private byte[] pkByteArray;
 	private byte[] prByteArray;
+	private byte[] bigByteArray;
+	private byte[] encryptedSymKey;
+	private byte[] encryptedMsg;
 	
 	/*
 	// make private key?
@@ -205,9 +215,11 @@ public class IdentityCard extends Applet {
 	 * This method is called when the applet is selected and an APDU arrives.
 	 */
 	public void process(APDU apdu) throws ISOException {
+		
 		// A reference to the buffer, where the APDU data is stored, is
 		// retrieved.
 		byte[] buffer = apdu.getBuffer();
+		
 
 		// If the APDU selects the applet, no further processing is required.
 		if (this.selectingApplet())
@@ -215,16 +227,24 @@ public class IdentityCard extends Applet {
 
 		// Check whether the indicated class of instructions is compatible with
 		// this applet.
-		if (buffer[ISO7816.OFFSET_CLA] != IDENTITY_CARD_CLA)
+		if (buffer[ISO7816.OFFSET_CLA] != IDENTITY_CARD_CLA) {
 			ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
+		}
 		// A switch statement is used to select a method depending on the
 		// instruction
 		switch (buffer[ISO7816.OFFSET_INS]) {
 		case VALIDATE_PIN_INS:
 			validatePIN(apdu);
 			break;
+		
 		case SIG_TIME:
 			sign(apdu);
+			break;
+		case SEND_BIG_DATA:
+			receive_big_data(apdu);
+			break;
+		case AUTHENTICATESP:
+			verify_certificate(apdu);
 			break;
 		case HELLO:
 			reqRevalidation(apdu);
@@ -236,6 +256,7 @@ public class IdentityCard extends Applet {
 		// the type of warning. There are several predefined warnings in the
 		// 'ISO7816' class.
 		default:
+			
 			ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
 		}
 	}
@@ -305,13 +326,43 @@ public class IdentityCard extends Applet {
 		return temp;
 	}
 	
+	private void receive_big_data(APDU apdu) {
+		
+		byte incomingByteArray[] = read_Data(apdu);
+		byte[] newBigByteArray;
+		if (bigByteArray != null) {
+			newBigByteArray = new byte[bigByteArray.length + incomingByteArray.length];
+			System.arraycopy(bigByteArray, 0, newBigByteArray, 0, bigByteArray.length);
+			System.arraycopy(incomingByteArray, 0, newBigByteArray, bigByteArray.length, incomingByteArray.length);
+		}
+		else {
+			newBigByteArray = new byte[incomingByteArray.length];
+			System.arraycopy(incomingByteArray, 0, newBigByteArray, 0, incomingByteArray.length);
+		}
+		bigByteArray = newBigByteArray;
+		
+	}
+	
+	private Object read_byte_array_from_data(APDU apdu) {
+		Object o;
+		if (bigByteArray != null) {
+			o = convertToObject(bigByteArray);
+			bigByteArray = null;
+		}
+		else {
+			o = convertToObject(read_Data(apdu));
+		}
+		return o;
+	}
+	
 	private void sign(APDU apdu) {
 		// If the pin is not validated, a response APDU with the
 		// 'SW_PIN_VERIFICATION_REQUIRED' status word is transmitted.
-		if (!pin.isValidated())
+		if (!pin.isValidated()) {
 			ISOException.throwIt(SW_PIN_VERIFICATION_REQUIRED);
+		}
 		else {
-			Pair<byte[], Timestamp> encryptedTimestamp = (Pair<byte[], Timestamp>)convertToObject(read_Data(apdu));
+			Pair<byte[], Timestamp> encryptedTimestamp = (Pair<byte[], Timestamp>)read_byte_array_from_data(apdu) ;
 			
 			// (10) verify timestamp
 			PublicKey pk = (PublicKey) convertToObject(pkByteArray);
@@ -349,15 +400,39 @@ public class IdentityCard extends Applet {
 				
 
 			// (12) set new time in memory
-			System.out.println("before = " + lastValidationTime.getTime());
 			lastValidationTime = encryptedTimestamp.getValue();
-			System.out.println("after = " + lastValidationTime.getTime());
-			lastValidationTimeByteArray = convertToBytes(lastValidationTime);
-			
 		}
+	}
+	
+	private void verify_certificate(APDU apdu) {
+		// If the pin is not validated, a response APDU with the
+		// 'SW_PIN_VERIFICATION_REQUIRED' status word is transmitted.
+		if (!pin.isValidated()) {
+			ISOException.throwIt(SW_PIN_VERIFICATION_REQUIRED);
+		}
+		else {
+			try {
+				X509Certificate cert_SP = (X509Certificate)read_byte_array_from_data(apdu);
+				
+				// (2) check validity of certificate
+				PublicKey pk = (PublicKey) convertToObject(pkByteArray);
+				cert_SP.verify(pk);
+				
+				// (3) check time validity of the certificate
+				Timestamp lastValidationTime = convertBytesToTimestamp(lastValidationTimeByteArray);
+				cert_SP.checkValidity(lastValidationTime);
+				
+			}
+			catch(Exception e) {
+				ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+			}
+		}
+			
+			
 	}
 
 	private void reqRevalidation(APDU apdu) {
+		
 		// If the pin is not validated, a response APDU with the
 		// 'SW_PIN_VERIFICATION_REQUIRED' status word is transmitted.
 		if (!pin.isValidated())
@@ -402,7 +477,7 @@ public class IdentityCard extends Applet {
 	}
 	
 	// encode something to bytes
-	public static byte[] convertToBytes(Object input) {
+	private static byte[] convertToBytes(Object input) {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		ObjectOutput out = null;
 		try {
@@ -420,7 +495,7 @@ public class IdentityCard extends Applet {
 	}
 	
 	// decode something to bytes
-	public static Object convertToObject(byte[] yourBytes) {
+	private static Object convertToObject(byte[] yourBytes) {
 		ByteArrayInputStream bis = new ByteArrayInputStream(yourBytes);
 		ObjectInput in = null;
 		try {

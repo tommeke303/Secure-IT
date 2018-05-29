@@ -24,8 +24,10 @@ public class GVMMain {
 		int ssPort = 1250;
 
 		// find keystore
-		String keyStorePath = Paths.get(System.getProperty("user.dir")).getParent().toString() + File.separator
-				+ "Certificates" + File.separator;
+		//String keyStorePath = Paths.get(System.getProperty("user.dir")).getParent().toString() + File.separator
+		//		+ "Certificates" + File.separator;
+		String keyStorePath = "/Users/Thomas/eclipse-workspace/Secure-IT/workspace/Certificates/";
+		
 		String governmentKeyStore = keyStorePath + "government.jks";
 		String governmentKeyPassword = "password";
 		String CertificateName = "government";
