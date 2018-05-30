@@ -28,3 +28,4 @@ public class SPmessage implements Serializable {
 		return this.data;
 	}
 }
+

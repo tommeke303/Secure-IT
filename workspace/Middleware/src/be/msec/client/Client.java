@@ -10,10 +10,16 @@ import be.msec.serviceProvider.SPmessageType;
 import be.msec.serviceProvider.client.SPClient;
 import be.msec.serviceProvider.tools.SPtools;
 import javafx.util.Pair;
-import sun.misc.Resource;
 
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import java.nio.file.Paths;
 import java.security.KeyStore;
 import java.security.MessageDigest;
@@ -23,7 +29,9 @@ import java.security.PublicKey;
 import java.security.Signature;
 import java.security.cert.X509Certificate;
 import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.Random;
 
 import javax.crypto.BadPaddingException;
@@ -41,6 +49,13 @@ public class Client {
 	private static final byte VALIDATE_PIN_INS = 0x22;
 	private final static short SW_VERIFICATION_FAILED = 0x6300;
 	private final static short SW_PIN_VERIFICATION_REQUIRED = 0x6301;
+	private static final short SW_CONDITIONS_NOT_SATISFIED = 0x6985;
+	private static final short SW_DATA_INVALID = 0x6984;
+	private static final short SW_SECURITY_STATUS_NOT_SATISFIED = 0x6982;
+	private static final byte HELLO = 0x24;
+	private static final byte SIG_TIME = 0x26;
+	private static final byte SEND_BIG_DATA = 0x30;
+	private static final byte AUTHENTICATESP = 0x34;
 	private static String algSym;
 	private static Cipher cph;
 	private static SecretKey symKey;
@@ -130,95 +145,92 @@ public class Client {
 			 */
 			// TODO: (2): send "hello" + current time to card
 			Timestamp timestamp = new Timestamp(System.currentTimeMillis());
-
-			// TODO: (3) todo on javacard
-			// 1sec, 1min, 1hour, 1 day, a week
-			long threshold = 1000 * 60 * 60 * 24 * 7; // example threshold
-			Timestamp lastValidationTime = new Timestamp(0); // make serious out
-																// of date
-																// timestamp
-																// (for testing
-																// purpose)
-			Boolean reqRevalidation = lastValidationTime.getTime() < (timestamp.getTime() - threshold);
-
-			// TODO: (4): receive 'reqValidation' from card
-
+			byte[] currentTimeBytes = convertToBytes(timestamp);
+			
+			a = send_data(convertToBytes(new Timestamp(System.currentTimeMillis())), HELLO, a, r, c);
+			r = c.transmit(a);
+			System.out.println(r);
+			
+			Boolean reqRevalidation;
+			
+			if (r.getSW() == SW_CONDITIONS_NOT_SATISFIED || r.getSW() != 0x9000) {
+				reqRevalidation = true;
+			}
+			else {
+				reqRevalidation = false;
+			}
+			
 			// (5), set new time when revalidation is required
 			if (reqRevalidation) {
 				// (6)->(9)
+				// (9) 
 				Pair<byte[], Timestamp> encryptedTimestamp = new GVMTimestampClient().getTimestampRaw();
-
-				// TODO: (9)->(12) in javacard
-
-				// get public key, dees is enkel voor in de client.java, normaal
-				// heeft de javacard de public key van government al opgeslagen
-				String keyStorePath = Paths.get(System.getProperty("user.dir")).getParent().toString() + File.separator
-						+ "Certificates" + File.separator;
-				String ClientKeyStore = keyStorePath + "common.jks";
-				String ClientKeyPassword = "password";
-				String CertificateName = "government (ca)";
-				KeyStore keyStore = KeyStore.getInstance("JKS");
-				FileInputStream fis = new FileInputStream(ClientKeyStore);
-				keyStore.load(fis, ClientKeyPassword.toCharArray());
-				fis.close();
-				PublicKey pk = keyStore.getCertificate(CertificateName).getPublicKey();
-
-				// (10) verify timestamp
-				Signature sig = Signature.getInstance("SHA1WithRSA");
-				sig.initVerify(pk);
-				sig.update(SPtools.convertToBytes(encryptedTimestamp.getValue()));
-				if (!sig.verify(encryptedTimestamp.getKey()))
-					throw new Exception("Government signature was invalid!");
-
-				// (11) check if new time is actually new
-				if (lastValidationTime.getTime() >= encryptedTimestamp.getValue().getTime())
-					throw new Exception("New time is smaller (or equal) to old time, something went wrong!");
-
-				// (12) set new time in memory
-				lastValidationTime = encryptedTimestamp.getValue();
+				byte[] encryptedTimestampByteArray = convertToBytes(encryptedTimestamp);
+				
+				a = send_data(encryptedTimestampByteArray, SIG_TIME, a, r, c);
+				r = c.transmit(a);
+				System.out.println(r);
+				
+				if (r.getSW() == SW_DATA_INVALID || r.getSW() != 0x9000) {
+					System.out.println("An error occured");
+				}
+				
 			}
 
 			/**
 			 * STEP 2: authenticate Service Provider
 			 */
+			
 			System.out.println("Making connection to SP.");
 			SPClient service = new SPClient();
 
 			// TODO (1) send this certificate to the javacard
 			X509Certificate cert_SP = service.getServiceCertificate();
 			System.out.println("Connected to SP and certificate received, forwarding to javacard.");
+			
+			byte[] certificateByteArray = convertToBytes(cert_SP);
+			a = send_data(certificateByteArray, AUTHENTICATESP, a, r, c);
+			r = c.transmit(a);
+			System.out.println(r);
 
 			/**
 			 * TODO stuff to do on javacard (2)-(8)
 			 * --------------------------------------------
 			 */
 
+			/*
+			
+			
+			
+			
 			// verify certificate
 			// cert.verify(*CA pk*); // (2)
 			cert_SP.checkValidity(timestamp); // (3), use lastValidationTime
 											// instead of timestamp
 
-			// (4) make symmetric key
-			algSym = "AES";
-			cph = Cipher.getInstance(algSym);
-			symKey = KeyGenerator.getInstance("AES").generateKey();
-
-			// (5) encrypt symKey with pk of cert
-			String algAsym = "RSA/ECB/PKCS1Padding";
-			PublicKey pk = cert_SP.getPublicKey();
-			cph = Cipher.getInstance(algAsym);
-			cph.init(Cipher.ENCRYPT_MODE, pk);
-			byte[] encryptedSymKey = cph.doFinal(symKey.getEncoded());
-
-			// (6) generate random nr
-			Random rand = new Random();
-			int n = rand.nextInt();
-
-			// (7) encrypt challenge with symmetric key
-			Pair<Integer, String> msg = new Pair<Integer, String>(n, cert_SP.getSubjectDN().getName());
-			cph = Cipher.getInstance(algSym);
-			cph.init(Cipher.ENCRYPT_MODE, symKey);
-			byte[] encryptedMsg = cph.doFinal(SPtools.convertToBytes(msg));
+			 // (4) make symmetric key
+				String algSym = "AES";
+				Cipher cph = Cipher.getInstance(algSym);
+				SecretKey symKey = KeyGenerator.getInstance("AES").generateKey();
+		
+				// (5) encrypt symKey with pk of cert
+				String algAsym = "RSA/ECB/PKCS1Padding";
+				pkByteArray = convertToBytes(cert_SP.getPublicKey());
+				
+				cph = Cipher.getInstance(algAsym);
+				cph.init(Cipher.ENCRYPT_MODE, pk);
+				
+				encryptedSymKey = cph.doFinal(symKey.getEncoded());
+		
+				// (6) generate random nr
+				Random rand = new Random();
+				int n = rand.nextInt();
+		
+				// (7) encrypt challenge with symmetric key
+				Pair<Integer, String> msg = new Pair<Integer, String>(n, cert_SP.getSubjectDN().getName());
+				cph = Cipher.getInstance(algSym);
+				cph.init(Cipher.ENCRYPT_MODE, symKey);
+				encryptedMsg = cph.doFinal(convertToBytes(msg));
 
 			/**
 			 * // conversion tests (working) Pair<Integer, X509Certificate> test
@@ -232,6 +244,15 @@ public class Client {
 			/**
 			 * --------------------------------------------------
 			 */
+			
+			
+			
+			
+			/*
+			
+			
+			
+			
 			System.out.println("Challenge received from javacard, forwarding to SP.");
 			// (8).2 & (13).1 sending encryptedMsg & encryptedSymKey to SP &
 			// receiving responce
@@ -244,6 +265,11 @@ public class Client {
 			 * -------------------------
 			 */
 
+			
+			/*
+			
+			
+			
 			// (14) get challenge nr & certificate name
 			cph = Cipher.getInstance(algSym);
 			cph.init(Cipher.DECRYPT_MODE, symKey);
@@ -261,9 +287,21 @@ public class Client {
 			 * -----------------------------
 			 */
 
+			
+			
+			
+			
+			
 			/**
 			 * STEP 3: authenticate card
 			 */
+			
+			
+			
+			/*
+			
+			
+			
 			// (3).1 received from SP
 			byte[] encryptedChallenge = service.receiveChallenge();
 			System.out.println("Challenge received from SP, forwarding to javacard");
@@ -273,6 +311,10 @@ public class Client {
 			 * TODO, (4)-(7) needs to be done on javacard
 			 * ----------------------------------
 			 */
+			
+			/*
+			
+			
 			// (4) check authentication
 			if (!auth)
 				throw new Exception("SP is not authenticated yet!");
@@ -315,6 +357,12 @@ public class Client {
 			 */
 			// TODO (8).1 send 'Emsg2' to middelware
 
+			
+			
+			
+			/*
+			
+			
 			// (8).2 forwarding Emsg2 to SP
 			System.out.println("Challenge received from javacard, forwarding to SP.");
 			service.sendChallengeResponce(Emsg2);
@@ -322,6 +370,14 @@ public class Client {
 			/**
 			 * STEP 4, query attribute releases
 			 */
+			
+			
+			
+			
+			/*
+			
+			
+			
 			// some dummy data to sent
 			String User_Pin = "1234";
 			String User_Name = "Mr. Bean";
@@ -453,6 +509,7 @@ public class Client {
 			// just to keep client running
 			while (true) {
 			}
+			*/
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -479,5 +536,88 @@ public class Client {
 		}
 		
 		return encryptedData;
+	}
+	// encode something to bytes
+    public static byte[] convertToBytes(Object input) {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutput out = null;
+        try {
+            out = new ObjectOutputStream(bos);
+            out.writeObject(input);
+            out.flush();
+            byte[] yourBytes = bos.toByteArray();
+
+            bos.close();
+
+            return yourBytes;
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+    
+    public static void SendBigData(byte[] bigDataArray, CommandAPDU a, ResponseAPDU r, IConnection c) throws Exception {
+    	int numberOfIterations = (int)(Math.ceil(((double)bigDataArray.length) / 127));
+		int offset = 0;
+		
+		for (int i = 0; i<numberOfIterations; i++) {
+			byte[] memory_chunck = null;
+			if ((i + 1) >= numberOfIterations) {
+				memory_chunck = new byte[bigDataArray.length - offset];
+				for (int j = 0; j < (bigDataArray.length - offset); j++) {
+					memory_chunck[j] = bigDataArray[offset + j];
+				}
+			}
+			else {
+				memory_chunck = new byte[127];
+				for (int j = 0; j < 127; j++) {
+					memory_chunck[j] = bigDataArray[offset + j];
+				}
+				offset = offset + 127;
+			}
+			a = new CommandAPDU(IDENTITY_CARD_CLA, SEND_BIG_DATA, 0x00, 0x00, memory_chunck);
+			r = c.transmit(a);
+		}
+    }
+    
+    public static CommandAPDU send_data(byte[] byteArrayToBeSend, short code, CommandAPDU a, ResponseAPDU r, IConnection c) throws Exception {
+    		if (byteArrayToBeSend.length > 127) {
+			SendBigData(byteArrayToBeSend, a, r, c);
+			a = new CommandAPDU(IDENTITY_CARD_CLA, code, 0x00, 0x00, null);
+		}
+		else {
+			a = new CommandAPDU(IDENTITY_CARD_CLA, code, 0x00, 0x00, byteArrayToBeSend);
+		}
+    		return(a);
+    }
+		
+    // decode something to bytes
+    public static Object convertToObject(byte[] yourBytes) {
+        ByteArrayInputStream bis = new ByteArrayInputStream(yourBytes);
+        ObjectInput in = null;
+        try {
+            in = new ObjectInputStream(bis);
+            Object o = in.readObject();
+
+            in.close();
+
+            return o;
+        } catch (Exception ex) {
+            // ignore close exception
+
+            return null;
+        }
+    }
+    
+    private static Timestamp convertBytesToTimestamp(byte[] timeByteArray) {
+		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSS");
+		Date parsedDate = null;
+		try {
+			parsedDate = dateFormat.parse(String.valueOf(convertToObject(timeByteArray)));
+		}
+		catch(Exception e) {
+			System.out.println(e);
+		}
+		
+		return new Timestamp(parsedDate.getTime());
 	}
 }

@@ -69,8 +69,11 @@ public class SPMain {
 	private ObjectInputStream in;
 
 	// find keystore
-	private String keyStorePath = Paths.get(System.getProperty("user.dir")).getParent().toString() + File.separator
-			+ "Certificates" + File.separator;
+	//private String keyStorePath = Paths.get(System.getProperty("user.dir")).getParent().toString() + File.separator
+	//		+ "Certificates" + File.separator;
+	
+	String keyStorePath = "/Users/Thomas/eclipse-workspace/Secure-IT/workspace/Certificates/";
+	
 	private String serviceProviderKeyStore = keyStorePath + "ServiceProvider.jks";
 	private String serviceProviderKeyPassword = "password";
 
@@ -139,8 +142,11 @@ public class SPMain {
 
 					// get common certificate & remember
 
-					String keyStorePath = Paths.get(System.getProperty("user.dir")).getParent().toString()
-							+ File.separator + "Certificates" + File.separator;
+					//String keyStorePath = Paths.get(System.getProperty("user.dir")).getParent().toString()
+					//		+ File.separator + "Certificates" + File.separator;
+					
+					String keyStorePath = "/Users/Thomas/eclipse-workspace/Secure-IT/workspace/Certificates/";
+					
 					String SPKeyStore = keyStorePath + "ServiceProvider.jks";
 					String SPPassword = "password";
 					String CertificateName = "ca";
