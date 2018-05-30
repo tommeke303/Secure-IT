@@ -58,4 +58,3 @@ public class SimulatedConnection implements IConnection {
 	}
 
 }
-

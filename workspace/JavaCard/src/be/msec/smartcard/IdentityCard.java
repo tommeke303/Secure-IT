@@ -49,6 +49,8 @@ public class IdentityCard extends Applet {
 	private static final byte SIG_TIME = 0x26;
 	private static final byte SEND_BIG_DATA = 0x30;
 	private static final byte AUTHENTICATESP = 0x34;
+	private static final byte RETRIEVE_KEY = 0x32;
+	private static final byte RETRIEVE_MSG = 0x36;
 	
 	private final static byte PIN_TRY_LIMIT = (byte) 0x03;
 	private final static byte PIN_SIZE = (byte) 0x04;
@@ -123,8 +125,6 @@ public class IdentityCard extends Applet {
 			(byte) 68, (byte) 124, (byte) -1, (byte) -128, (byte) -49, (byte) 124, (byte) 103, (byte) 28, (byte) 56,
 			(byte) -114, (byte) -10, (byte) 97, (byte) -78, (byte) 54 };
 
-	private byte[] serial = new byte[] { (byte) 0x4A, (byte) 0x61, (byte) 0x6e };
-	private byte[] name = new byte[] { 0x4A, 0x61, 0x6E, 0x20, 0x56, 0x6F, 0x73, 0x73, 0x61, 0x65, 0x72, 0x74 };
 	private OwnerPIN pin;
 	private byte[] lastValidationTimeByteArray;
 	private byte[] pkByteArray;
@@ -246,6 +246,12 @@ public class IdentityCard extends Applet {
 		case AUTHENTICATESP:
 			verify_certificate(apdu);
 			break;
+		case RETRIEVE_KEY:
+			retrieve_key(apdu);
+			break;
+		case RETRIEVE_MSG:
+			retrieve_msg(apdu);
+			break;
 		case HELLO:
 			reqRevalidation(apdu);
 			break;
@@ -324,6 +330,28 @@ public class IdentityCard extends Applet {
 		}
 		
 		return temp;
+	}
+	
+	private void retrieve_key(APDU apdu) {
+		// If the pin is not validated, a response APDU with the
+		// 'SW_PIN_VERIFICATION_REQUIRED' status word is transmitted.
+		if (!pin.isValidated()) {
+			ISOException.throwIt(SW_PIN_VERIFICATION_REQUIRED);
+		}
+		else {
+			encryptedSymKey = (byte[])read_byte_array_from_data(apdu) ;
+		}
+	}
+	
+	private void retrieve_msg(APDU apdu) {
+		// If the pin is not validated, a response APDU with the
+		// 'SW_PIN_VERIFICATION_REQUIRED' status word is transmitted.
+		if (!pin.isValidated()) {
+			ISOException.throwIt(SW_PIN_VERIFICATION_REQUIRED);
+		}
+		else {
+			encryptedMsg = (byte[])read_byte_array_from_data(apdu) ;
+		}
 	}
 	
 	private void receive_big_data(APDU apdu) {

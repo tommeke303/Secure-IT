@@ -22,4 +22,3 @@ public interface IConnection {
 	abstract ResponseAPDU transmit(CommandAPDU apdu)  throws Exception;
 
 }
-
